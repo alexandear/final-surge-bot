@@ -172,7 +172,8 @@ func main() {
 				}
 				q := u.Query()
 				q.Set("scopekey", userToken.UserKey)
-				today := time.Now().Format("2006-01-02")
+				now := time.Now()
+				today := now.Format("2006-01-02")
 				q.Set("startdate", today)
 				q.Set("enddate", today)
 				u.RawQuery = q.Encode()
@@ -210,9 +211,15 @@ func main() {
 				}
 
 				text := strings.Builder{}
-				text.WriteString("today's tasks:")
+				text.WriteString("Tasks:")
+				text.WriteByte('\n')
+				text.WriteString("Today ")
+				text.WriteString(now.Format("DD.MM"))
+				text.WriteByte(':')
+				text.WriteByte('\n')
 				for _, w := range workoutList.Data {
 					text.WriteString(w.Description)
+					text.WriteByte('\n')
 				}
 
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, text.String())
