@@ -214,7 +214,7 @@ func main() {
 				text.WriteString("Tasks:")
 				text.WriteByte('\n')
 				text.WriteString("Today ")
-				text.WriteString(now.Format("DD.MM"))
+				text.WriteString(now.Format("02.01"))
 				text.WriteByte(':')
 				text.WriteByte('\n')
 				for _, w := range workoutList.Data {
