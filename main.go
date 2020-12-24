@@ -91,6 +91,19 @@ func main() {
 		}
 	}()
 
+	go func() {
+		// Work-around for heroku
+
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+
+		if err := http.ListenAndServe(":"+port, nil); err != nil {
+			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
+		}
+	}()
+
 	if err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucket([]byte(BucketUserToken))
 		if errors.Is(err, bolt.ErrBucketExists) {
