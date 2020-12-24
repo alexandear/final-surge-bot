@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -195,9 +196,15 @@ func main() {
 					continue
 				}
 
-				log.Println("today's tasks:")
+				text := strings.Builder{}
+				text.WriteString("today's tasks:")
 				for _, w := range workoutList.Data {
-					log.Println(w.Description)
+					text.WriteString(w.Description)
+				}
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, text.String())
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(fmt.Errorf("failed to send msg about tasks: %w", err))
 				}
 			default:
 				log.Println("unknown command ", update.Message.Command())
