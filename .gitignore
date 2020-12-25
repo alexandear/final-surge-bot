@@ -1,4 +1,5 @@
 .idea
 final-surge-bot
 *.db
+bin/
 
