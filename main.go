@@ -125,8 +125,9 @@ func main() {
 
 	u.Timeout = 60
 
-	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(publicURL + bot.Token)); err != nil {
-		log.Fatal(fmt.Errorf("failed to set webhook to %s: %w", publicURL, err))
+	webhookURL := publicURL + bot.Token
+	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
+		log.Fatal(fmt.Errorf("failed to set webhook to %s: %w", webhookURL, err))
 	}
 
 	info, err := bot.GetWebhookInfo()
@@ -141,12 +142,17 @@ func main() {
 	updates := bot.ListenForWebhook("/" + bot.Token)
 
 	go func() {
-		addr := "0.0.0.0:" + port
+		addr := ":" + port
+
 		log.Printf("start listening on %s", addr)
 
-		if err := http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.DefaultServeMux.Handle("/check", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Println("check requested")
+
 			w.WriteHeader(http.StatusOK)
-		})); err != nil {
+		}))
+
+		if err := http.ListenAndServe(addr, nil); err != nil {
 			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
 		}
 	}()
