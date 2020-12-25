@@ -15,6 +15,8 @@ const (
 	fsClientTimeout = 2 * time.Second
 
 	boltTimeout = time.Second
+
+	updateTimeout = 60 * time.Second
 )
 
 func main() {
@@ -35,7 +37,7 @@ func main() {
 
 	bot, err := tgbotapi.NewBotAPI(apiKey)
 	if err != nil {
-		log.Panic(fmt.Errorf("failed to init bot api: %w", err))
+		log.Fatal(fmt.Errorf("failed to init bot api: %w", err))
 	}
 
 	bot.Debug = true
@@ -56,7 +58,7 @@ func main() {
 
 	u := tgbotapi.NewUpdate(0)
 
-	u.Timeout = 60
+	u.Timeout = int(updateTimeout.Seconds())
 
 	webhookURL := publicURL + bot.Token
 	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {

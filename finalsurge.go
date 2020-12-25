@@ -59,7 +59,7 @@ func NewFinalSurgeAPI(client *http.Client) *FinalSurgeAPI {
 func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to parse final surge dataURL url: %w", err)
+		return FinalSurgeLogin{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
 	}
 
 	q := u.Query()
@@ -98,7 +98,7 @@ func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 	}
 
 	if !login.Success && login.ErrorNumber != nil && login.ErrorDescription != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to get login dataURL: %d %s", *login.ErrorNumber, *login.ErrorDescription)
+		return FinalSurgeLogin{}, fmt.Errorf("failed to get login: %d %s", *login.ErrorNumber, *login.ErrorDescription)
 	}
 
 	return login, nil
@@ -107,7 +107,7 @@ func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 func (f *FinalSurgeAPI) Workouts(userToken, userKey string, startDate, endDate time.Time) (FinalSurgeWorkoutList, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to parse final surge dataURL url: %w", err)
+		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
 	}
 
 	q := u.Query()
