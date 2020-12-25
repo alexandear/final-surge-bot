@@ -32,15 +32,6 @@ linters:
   enable-all: true
   disable:
     - goerr113
-    - funlen
-    - noctx
-    - nlreturn
-    - govet
-    - wsl
-    - gocritic
-    - lll
-    - nestif
-    - wrapcheck
 
 issues:
   exclude-rules:

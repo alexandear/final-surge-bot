@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -56,7 +57,7 @@ func NewFinalSurgeAPI(client *http.Client) *FinalSurgeAPI {
 	}
 }
 
-func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
+func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (FinalSurgeLogin, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
@@ -74,7 +75,7 @@ func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to marshal cred: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(bc))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(bc))
 	if err != nil {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -88,6 +89,7 @@ func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 	if err != nil {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to read all: %w", err)
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to close body: %w", err)
 	}
@@ -97,14 +99,15 @@ func (f *FinalSurgeAPI) Login(email, password string) (FinalSurgeLogin, error) {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to unmarshal login: %w", err)
 	}
 
-	if !login.Success && login.ErrorNumber != nil && login.ErrorDescription != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to get login: %d %s", *login.ErrorNumber, *login.ErrorDescription)
+	if err := newFinalSurgeError(login.FinalSurgeStatus); err != nil {
+		return FinalSurgeLogin{}, fmt.Errorf("failed to get login: %w", err)
 	}
 
 	return login, nil
 }
 
-func (f *FinalSurgeAPI) Workouts(userToken, userKey string, startDate, endDate time.Time) (FinalSurgeWorkoutList, error) {
+func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string, startDate, endDate time.Time,
+) (FinalSurgeWorkoutList, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
@@ -118,10 +121,11 @@ func (f *FinalSurgeAPI) Workouts(userToken, userKey string, startDate, endDate t
 	q.Set("enddate", endDate.Format("2006-01-02"))
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("Authorization", "Bearer "+userToken)
 
 	resp, err := f.client.Do(req)
@@ -133,6 +137,7 @@ func (f *FinalSurgeAPI) Workouts(userToken, userKey string, startDate, endDate t
 	if err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to read all: %w", err)
 	}
+
 	if err := resp.Body.Close(); err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to close body: %w", err)
 	}
@@ -144,9 +149,18 @@ func (f *FinalSurgeAPI) Workouts(userToken, userKey string, startDate, endDate t
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
-	if !workoutList.Success && workoutList.ErrorNumber != nil && workoutList.ErrorDescription != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get workout list: %d %s", *workoutList.ErrorNumber, *workoutList.ErrorDescription)
+	if err := newFinalSurgeError(workoutList.FinalSurgeStatus); err != nil {
+		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get workouts: %w", err)
 	}
 
 	return workoutList, nil
+}
+
+func newFinalSurgeError(status FinalSurgeStatus) error {
+	if !status.Success && status.ErrorNumber != nil && status.ErrorDescription != nil {
+		return fmt.Errorf("final surge error: number=%d desc=%s", *status.ErrorNumber,
+			*status.ErrorDescription)
+	}
+
+	return nil
 }
