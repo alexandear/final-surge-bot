@@ -85,7 +85,7 @@ func initBotAPI(apiKey, publicURL string) (bot *tgbotapi.BotAPI, updates tgbotap
 	}
 
 	if info.LastErrorDate != 0 {
-		return nil, nil, fmt.Errorf("telegram callback failed: %s", info.LastErrorMessage)
+		log.Println(fmt.Errorf("telegram callback failed: %s", info.LastErrorMessage))
 	}
 
 	updates = bot.ListenForWebhook("/" + bot.Token)
