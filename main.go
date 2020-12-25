@@ -94,6 +94,8 @@ func main() {
 		log.Panic(fmt.Errorf("failed to init bot api: %w", err))
 	}
 
+	bot.Debug = true
+
 	db, err := bolt.Open(DatabaseFile, 0o600, &bolt.Options{Timeout: time.Second})
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to open database: %w", err))
