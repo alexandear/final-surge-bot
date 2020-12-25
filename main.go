@@ -123,7 +123,7 @@ func main() {
 
 	u.Timeout = 60
 
-	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(publicURL)); err != nil {
+	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(publicURL + bot.Token)); err != nil {
 		log.Fatal(fmt.Errorf("failed to set webhook to %s: %w", publicURL, err))
 	}
 
@@ -131,6 +131,12 @@ func main() {
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to get webhook info: %w", err))
 	}
+
+	if info.LastErrorDate != 0 {
+		log.Printf("telegram callback failed: %s", info.LastErrorMessage)
+	}
+
+	updates := bot.ListenForWebhook("/" + bot.Token)
 
 	go func() {
 		addr := "0.0.0.0:" + port
@@ -142,12 +148,6 @@ func main() {
 			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
 		}
 	}()
-
-	if info.LastErrorDate != 0 {
-		log.Printf("telegram callback failed: %s", info.LastErrorMessage)
-	}
-
-	updates := bot.ListenForWebhook("/" + bot.Token)
 
 	for update := range updates {
 		if update.Message == nil {
