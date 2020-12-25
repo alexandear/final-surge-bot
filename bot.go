@@ -23,6 +23,11 @@ const (
 	EnterDone
 )
 
+type UserToken struct {
+	UserKey string
+	Token   string
+}
+
 type Cred struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -30,14 +35,14 @@ type Cred struct {
 
 type Bot struct {
 	bot *tgbotapi.BotAPI
-	db  *Bolt
+	db  *Postgres
 	fs  *FinalSurgeAPI
 
 	userEnterCreds map[string]EnterCred
 	userCreds      map[string]*Cred
 }
 
-func NewBot(bot *tgbotapi.BotAPI, db *Bolt, fs *FinalSurgeAPI) *Bot {
+func NewBot(bot *tgbotapi.BotAPI, db *Postgres, fs *FinalSurgeAPI) *Bot {
 	return &Bot{
 		bot: bot,
 		db:  db,
@@ -92,7 +97,7 @@ func (b *Bot) Process(ctx context.Context, update tgbotapi.Update) error {
 			Token:   login.Data.Token,
 		}
 
-		if err := b.db.UpdateUserToken(userName, userToken); err != nil {
+		if err := b.db.UpdateUserToken(ctx, userName, userToken); err != nil {
 			return fmt.Errorf("failed to update user token: %w", err)
 		}
 	default:
@@ -102,7 +107,7 @@ func (b *Bot) Process(ctx context.Context, update tgbotapi.Update) error {
 	return nil
 }
 
-func (b *Bot) command(_ context.Context, command, userName string, chatID int64) error {
+func (b *Bot) command(ctx context.Context, command, userName string, chatID int64) error {
 	switch command {
 	case CommandStart:
 		text := "Enter FinalSurge email:"
@@ -115,7 +120,7 @@ func (b *Bot) command(_ context.Context, command, userName string, chatID int64)
 		b.userEnterCreds[userName] = EnterLogin
 		b.userCreds[userName] = &Cred{}
 	case CommandTask:
-		userToken, err := b.db.UserToken(userName)
+		userToken, err := b.db.UserToken(ctx, userName)
 		if err != nil {
 			return fmt.Errorf("failed to get usertoken: %w", err)
 		}

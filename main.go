@@ -8,54 +8,54 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	bolt "go.etcd.io/bbolt"
+	"github.com/jackc/pgx/v4"
 )
 
 const (
 	fsClientTimeout = 2 * time.Second
-
-	databaseFile       = "final-surge-bot.db"
-	databaseModeCreate = 0o600
-
-	boltTimeout = time.Second
 )
 
 func main() {
 	config, err := InitConfig()
 	if err != nil {
-		log.Panic(fmt.Errorf("failed to init config: %w", err))
+		log.Panicf("failed to init config: %v", err)
 	}
 
-	db, err := bolt.Open(databaseFile, databaseModeCreate, &bolt.Options{
-		Timeout: boltTimeout,
-	})
+	dbConn, err := pgx.Connect(context.Background(), config.DatabaseURL)
 	if err != nil {
-		log.Panic(fmt.Errorf("failed to open database: %w", err))
+		log.Panicf("unable to connect to database %s: %v", config.DatabaseURL, err)
 	}
 
 	defer func() {
-		if cerr := db.Close(); cerr != nil {
-			log.Println(fmt.Errorf("failed to close db: %w", cerr))
+		if errClose := dbConn.Close(context.Background()); errClose != nil {
+			log.Printf("failed to close db conn: %v", errClose)
 		}
 	}()
 
-	bot, updates, err := initBotAPI(config.BotAPIKey, config.PublicURL)
+	pg, err := NewPostgres(dbConn)
+	if err != nil {
+		log.Panicf("failed to create postgres: %v", err)
+	}
+
+	bot, err := tgbotapi.NewBotAPI(config.BotAPIKey)
+	if err != nil {
+		log.Panicf("failed to init bot api: %v", err)
+	}
+
+	bot.Debug = config.Debug
+
+	updates, err := updates(bot, config)
 	if err != nil {
 		log.Panic("failed to init bot api: %w", err)
 	}
 
 	go listen(":" + config.Port)
 
-	bolts, err := NewBolt(db)
-	if err != nil {
-		log.Panic(fmt.Errorf("failed to init bolt: %w", err))
-	}
-
 	fs := NewFinalSurgeAPI(&http.Client{
 		Timeout: fsClientTimeout,
 	})
 
-	b := NewBot(bot, bolts, fs)
+	b := NewBot(bot, pg, fs)
 
 	for update := range updates {
 		if err := b.Process(context.Background(), update); err != nil {
@@ -64,33 +64,57 @@ func main() {
 	}
 }
 
-func initBotAPI(apiKey, publicURL string) (bot *tgbotapi.BotAPI, updates tgbotapi.UpdatesChannel, err error) {
-	bot, err = tgbotapi.NewBotAPI(apiKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to init bot api: %w", err)
-	}
-
-	bot.Debug = true
-
+func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, error) {
 	log.Printf("bot authorized on account %s", bot.Self.UserName)
 
-	webhookURL := publicURL + bot.Token
-	if _, werr := bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); werr != nil {
-		return nil, nil, fmt.Errorf("failed to set webhook to %s: %w", webhookURL, werr)
+	if config.RunOnHeroku {
+		updates, err := updatesHeroku(bot, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get updates on heroku: %w", err)
+		}
+		return updates, nil
+	}
+
+	updates, err := updatesLocal(bot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updates local: %w", err)
+	}
+
+	return updates, nil
+}
+
+func updatesHeroku(bot *tgbotapi.BotAPI, config Config) (updates tgbotapi.UpdatesChannel, err error) {
+	webhookURL := config.PublicURL + bot.Token
+	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
+		return nil, fmt.Errorf("failed to set webhook to %s: %w", webhookURL, err)
 	}
 
 	info, err := bot.GetWebhookInfo()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get webhook info: %w", err)
+		return nil, fmt.Errorf("failed to get webhook info: %w", err)
 	}
 
 	if info.LastErrorDate != 0 {
-		log.Println(fmt.Errorf("telegram callback failed: %s", info.LastErrorMessage))
+		log.Printf("telegram callback failed: %s", info.LastErrorMessage)
 	}
 
 	updates = bot.ListenForWebhook("/" + bot.Token)
 
-	return bot, updates, nil
+	return updates, nil
+}
+
+func updatesLocal(bot *tgbotapi.BotAPI) (updates tgbotapi.UpdatesChannel, err error) {
+	const updateTimeout = 60 * time.Second
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = int(updateTimeout.Seconds())
+
+	updates, err = bot.GetUpdatesChan(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updates chan: %w", err)
+	}
+
+	return updates, nil
 }
 
 func listen(addr string) {
@@ -98,8 +122,8 @@ func listen(addr string) {
 
 	http.DefaultServeMux.Handle("/check", checkHandler())
 
-	if lerr := http.ListenAndServe(addr, nil); lerr != nil {
-		log.Println(fmt.Errorf("failed to listen and serve: %w", lerr))
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Println(fmt.Errorf("failed to listen and serve: %w", err))
 	}
 }
 

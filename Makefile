@@ -33,3 +33,9 @@ lint:
 format:
 	@echo format
 	@go fmt $(PKGS)
+
+.PHONY: vendor
+vendor:
+	@echo vendor
+	@-rm -rf vendor/
+	@go mod vendor
