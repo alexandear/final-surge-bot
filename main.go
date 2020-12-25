@@ -74,7 +74,20 @@ type UserToken struct {
 }
 
 func main() {
+	publicURL := os.Getenv("PUBLIC_URL")
+	if publicURL == "" {
+		log.Fatal("PUBLIC_URL env is missing")
+	}
+
 	apiKey := os.Getenv("BOT_API_KEY")
+	if apiKey == "" {
+		log.Fatal("BOT_API_KEY env is missing")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("PORT env is missing")
+	}
 
 	bot, err := tgbotapi.NewBotAPI(apiKey)
 	if err != nil {
@@ -91,18 +104,7 @@ func main() {
 		}
 	}()
 
-	go func() {
-		// Work-around for heroku
-
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8080"
-		}
-
-		if err := http.ListenAndServe(":"+port, nil); err != nil {
-			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
-		}
-	}()
+	log.Printf("bot authorized on account %s", bot.Self.UserName)
 
 	if err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucket([]byte(BucketUserToken))
@@ -114,15 +116,33 @@ func main() {
 		log.Fatal(fmt.Errorf("failed to create bucket: %w", err))
 	}
 
-	log.Printf("authorized on account %s", bot.Self.UserName)
-
 	userEnterCreds := make(map[string]EnterCred)
 	userCreds := make(map[string]*FinalSurgeCred)
 
 	u := tgbotapi.NewUpdate(0)
+
 	u.Timeout = 60
 
-	updates, _ := bot.GetUpdatesChan(u)
+	if _, err := bot.SetWebhook(tgbotapi.NewWebhook(publicURL)); err != nil {
+		log.Fatal(fmt.Errorf("failed to set webhook to %s: %w", publicURL, err))
+	}
+
+	info, err := bot.GetWebhookInfo()
+	if err != nil {
+		log.Fatal(fmt.Errorf("failed to get webhook info: %w", err))
+	}
+
+	go func() {
+		if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
+			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
+		}
+	}()
+
+	if info.LastErrorDate != 0 {
+		log.Printf("telegram callback failed: %s", info.LastErrorMessage)
+	}
+
+	updates := bot.ListenForWebhook("/" + bot.Token)
 
 	for update := range updates {
 		if update.Message == nil {
