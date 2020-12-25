@@ -133,7 +133,12 @@ func main() {
 	}
 
 	go func() {
-		if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
+		addr := "0.0.0.0:" + port
+		log.Printf("start listening on %s", addr)
+
+		if err := http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})); err != nil {
 			log.Println(fmt.Errorf("failed to listen and serve: %w", err))
 		}
 	}()
