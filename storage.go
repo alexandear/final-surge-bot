@@ -32,7 +32,11 @@ func NewBolt(db *bolt.DB) (*Bolt, error) {
 			return nil
 		}
 
-		return fmt.Errorf("failed to create bucket: %w", err)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
+
+		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("failed to update: %w", err)
 	}
