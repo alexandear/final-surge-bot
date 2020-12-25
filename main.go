@@ -72,6 +72,7 @@ func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, erro
 		if err != nil {
 			return nil, fmt.Errorf("failed to get updates on heroku: %w", err)
 		}
+
 		return updates, nil
 	}
 

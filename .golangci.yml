@@ -32,6 +32,7 @@ linters:
   enable-all: true
   disable:
     - goerr113
+    - maligned
 
 issues:
   exclude-rules:
