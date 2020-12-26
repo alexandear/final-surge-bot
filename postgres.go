@@ -11,12 +11,6 @@ type Postgres struct {
 	conn *pgx.Conn
 }
 
-func NewPostgres(conn *pgx.Conn) *Postgres {
-	return &Postgres{
-		conn: conn,
-	}
-}
-
 func (p *Postgres) Init(ctx context.Context) error {
 	if _, err := p.conn.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS user_tokens (

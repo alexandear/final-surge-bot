@@ -38,7 +38,9 @@ func run() error {
 		}
 	}()
 
-	pg := NewPostgres(dbConn)
+	pg := &Postgres{
+		conn: dbConn,
+	}
 
 	if errInit := pg.Init(context.Background()); errInit != nil {
 		return fmt.Errorf("failed to init postgres: %w", errInit)
@@ -58,9 +60,11 @@ func run() error {
 
 	go listen(config.Debug, ":"+config.Port)
 
-	fs := NewFinalSurgeAPI(&http.Client{
-		Timeout: fsClientTimeout,
-	})
+	fs := &FinalSurgeAPI{
+		client: &http.Client{
+			Timeout: fsClientTimeout,
+		},
+	}
 
 	b := NewBot(bot, pg, fs)
 

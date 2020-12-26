@@ -53,12 +53,6 @@ type FinalSurgeStatus struct {
 	CallID           *string `json:"call_id"`
 }
 
-func NewFinalSurgeAPI(client *http.Client) *FinalSurgeAPI {
-	return &FinalSurgeAPI{
-		client: client,
-	}
-}
-
 func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (FinalSurgeLogin, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {

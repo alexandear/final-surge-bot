@@ -9,7 +9,9 @@ import (
 )
 
 func TestFinalSurgeAPI_Login(t *testing.T) {
-	fs := NewFinalSurgeAPI(&http.Client{Timeout: time.Second})
+	fs := &FinalSurgeAPI{
+		client: &http.Client{Timeout: time.Second},
+	}
 
 	login := finalSurgeLogin(t, fs)
 
@@ -31,7 +33,9 @@ func finalSurgeLogin(t *testing.T, fs *FinalSurgeAPI) FinalSurgeLogin {
 }
 
 func TestFinalSurgeAPI_Workouts(t *testing.T) {
-	fs := NewFinalSurgeAPI(&http.Client{Timeout: time.Second})
+	fs := &FinalSurgeAPI{
+		client: &http.Client{Timeout: time.Second},
+	}
 	login := finalSurgeLogin(t, fs)
 
 	now := time.Now()
