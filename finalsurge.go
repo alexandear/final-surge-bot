@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -141,8 +140,6 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 	if err := resp.Body.Close(); err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to close body: %w", err)
 	}
-
-	log.Println("raw workouts resp: " + string(bs))
 
 	var workoutList FinalSurgeWorkoutList
 	if err := json.Unmarshal(bs, &workoutList); err != nil {

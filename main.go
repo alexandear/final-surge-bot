@@ -46,10 +46,10 @@ func main() {
 
 	updates, err := updates(bot, config)
 	if err != nil {
-		log.Panic("failed to init bot api: %w", err)
+		log.Panicf("failed to init bot api: %v", err)
 	}
 
-	go listen(":" + config.Port)
+	go listen(config.Debug, ":"+config.Port)
 
 	fs := NewFinalSurgeAPI(&http.Client{
 		Timeout: fsClientTimeout,
@@ -58,14 +58,20 @@ func main() {
 	b := NewBot(bot, pg, fs)
 
 	for update := range updates {
-		if err := b.Process(context.Background(), update); err != nil {
-			log.Println(err)
+		if update.Message == nil {
+			continue
+		}
+
+		if err := b.ProcessMessage(context.Background(), update.Message); err != nil {
+			log.Printf("failed to process message: %v", err)
 		}
 	}
 }
 
 func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, error) {
-	log.Printf("bot authorized on account %s", bot.Self.UserName)
+	if config.Debug {
+		log.Printf("bot authorized on account %s", bot.Self.UserName)
+	}
 
 	if config.RunOnHeroku {
 		updates, err := updatesHeroku(bot, config)
@@ -118,19 +124,23 @@ func updatesLocal(bot *tgbotapi.BotAPI) (updates tgbotapi.UpdatesChannel, err er
 	return updates, nil
 }
 
-func listen(addr string) {
-	log.Printf("start listening on %s", addr)
+func listen(debug bool, addr string) {
+	if debug {
+		log.Printf("start listening on %s", addr)
+	}
 
-	http.DefaultServeMux.Handle("/check", checkHandler())
+	http.DefaultServeMux.Handle("/check", checkHandler(debug))
 
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Println(fmt.Errorf("failed to listen and serve: %w", err))
 	}
 }
 
-func checkHandler() http.HandlerFunc {
+func checkHandler(debug bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("check requested")
+		if debug {
+			log.Println("check requested")
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}

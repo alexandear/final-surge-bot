@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -11,7 +12,10 @@ import (
 
 const (
 	CommandStart = "start"
-	CommandTask  = "task"
+)
+
+const (
+	KeyboardButtonTask = "/task"
 )
 
 type EnterCred int
@@ -38,6 +42,8 @@ type Bot struct {
 	db  *Postgres
 	fs  *FinalSurgeAPI
 
+	keyboard tgbotapi.ReplyKeyboardMarkup
+
 	userEnterCreds map[string]EnterCred
 	userCreds      map[string]*Cred
 }
@@ -48,44 +54,47 @@ func NewBot(bot *tgbotapi.BotAPI, db *Postgres, fs *FinalSurgeAPI) *Bot {
 		db:  db,
 		fs:  fs,
 
+		keyboard: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(KeyboardButtonTask),
+		)),
+
 		userEnterCreds: make(map[string]EnterCred),
 		userCreds:      make(map[string]*Cred),
 	}
 }
 
-func (b *Bot) Process(ctx context.Context, update tgbotapi.Update) error {
-	if update.Message == nil {
-		return nil
+func (b *Bot) ProcessMessage(ctx context.Context, message *tgbotapi.Message) error {
+	userName := message.From.UserName
+	chatID := message.Chat.ID
+	text := message.Text
+
+	if message.IsCommand() && message.Command() == CommandStart {
+		return b.commandStart(ctx, userName, chatID)
 	}
 
-	userName := update.Message.From.UserName
-
-	if update.Message.IsCommand() {
-		return b.command(ctx, update.Message.Command(), userName, update.Message.Chat.ID)
+	if text == KeyboardButtonTask {
+		return b.buttonTask(ctx, userName, chatID)
 	}
 
 	switch enter := b.userEnterCreds[userName]; enter {
+	case EnterUnknown, EnterDone:
 	case EnterLogin:
 		cred := b.userCreds[userName]
-		cred.Email = update.Message.Text
+		cred.Email = text
 
-		text := "Enter FinalSurge password:"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+		msgText := "Enter FinalSurge password:"
+		msg := tgbotapi.NewMessage(chatID, msgText)
 
 		if _, err := b.bot.Send(msg); err != nil {
-			return fmt.Errorf("failed to send msg %s: %w", text, err)
+			return fmt.Errorf("failed to send msg %s: %w", msgText, err)
 		}
 
 		b.userEnterCreds[userName] = EnterPassword
 	case EnterPassword:
 		cred := b.userCreds[userName]
-		cred.Password = update.Message.Text
+		cred.Password = text
 
 		b.userEnterCreds[userName] = EnterDone
-
-		fallthrough
-	case EnterUnknown, EnterDone:
-		cred := b.userCreds[userName]
 
 		login, err := b.fs.Login(ctx, cred.Email, cred.Password)
 		if err != nil {
@@ -100,61 +109,67 @@ func (b *Bot) Process(ctx context.Context, update tgbotapi.Update) error {
 		if err := b.db.UpdateUserToken(ctx, userName, userToken); err != nil {
 			return fmt.Errorf("failed to update user token: %w", err)
 		}
+
+		msg := tgbotapi.NewMessage(chatID, "Choose option:")
+		msg.ReplyMarkup = b.keyboard
+
+		if _, err := b.bot.Send(msg); err != nil {
+			return fmt.Errorf("failed to set keyboard markup: %w", err)
+		}
 	default:
-		return fmt.Errorf("unknown enter value %d", enter)
+		log.Printf("unknown enter value %d", enter)
 	}
 
 	return nil
 }
 
-func (b *Bot) command(ctx context.Context, command, userName string, chatID int64) error {
-	switch command {
-	case CommandStart:
-		text := "Enter FinalSurge email:"
-		msg := tgbotapi.NewMessage(chatID, text)
+func (b *Bot) commandStart(_ context.Context, userName string, chatID int64) error {
+	text := "Enter FinalSurge email:"
+	msg := tgbotapi.NewMessage(chatID, text)
 
-		if _, err := b.bot.Send(msg); err != nil {
-			return fmt.Errorf("failed to send msg %s: %w", text, err)
-		}
+	if _, err := b.bot.Send(msg); err != nil {
+		return fmt.Errorf("failed to send msg %s: %w", text, err)
+	}
 
-		b.userEnterCreds[userName] = EnterLogin
-		b.userCreds[userName] = &Cred{}
-	case CommandTask:
-		userToken, err := b.db.UserToken(ctx, userName)
-		if err != nil {
-			return fmt.Errorf("failed to get usertoken: %w", err)
-		}
+	b.userEnterCreds[userName] = EnterLogin
+	b.userCreds[userName] = &Cred{}
 
-		if userToken.UserKey == "" {
-			return nil
-		}
+	return nil
+}
 
-		today := time.Now()
+func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) error {
+	userToken, err := b.db.UserToken(ctx, userName)
+	if err != nil {
+		return fmt.Errorf("failed to get usertoken: %w", err)
+	}
 
-		workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, today)
-		if err != nil {
-			return fmt.Errorf("failed to get workouts: %w", err)
-		}
+	if userToken.UserKey == "" {
+		return nil
+	}
 
-		text := strings.Builder{}
-		text.WriteString("Tasks:")
+	today := time.Now()
+
+	workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, today)
+	if err != nil {
+		return fmt.Errorf("failed to get workouts: %w", err)
+	}
+
+	text := strings.Builder{}
+	text.WriteString("Tasks:")
+	text.WriteByte('\n')
+	text.WriteString("Today ")
+	text.WriteString(today.Format("02.01"))
+	text.WriteByte(':')
+	text.WriteByte('\n')
+
+	for _, w := range workoutList.Data {
+		text.WriteString(w.Description)
 		text.WriteByte('\n')
-		text.WriteString("Today ")
-		text.WriteString(today.Format("02.01"))
-		text.WriteByte(':')
-		text.WriteByte('\n')
+	}
 
-		for _, w := range workoutList.Data {
-			text.WriteString(w.Description)
-			text.WriteByte('\n')
-		}
-
-		msg := tgbotapi.NewMessage(chatID, text.String())
-		if _, err := b.bot.Send(msg); err != nil {
-			return fmt.Errorf("failed to send msg about tasks: %w", err)
-		}
-	default:
-		return fmt.Errorf("unknown command %s", command)
+	msg := tgbotapi.NewMessage(chatID, text.String())
+	if _, err := b.bot.Send(msg); err != nil {
+		return fmt.Errorf("failed to send msg about tasks: %w", err)
 	}
 
 	return nil
