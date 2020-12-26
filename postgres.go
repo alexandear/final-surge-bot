@@ -11,21 +11,23 @@ type Postgres struct {
 	conn *pgx.Conn
 }
 
-func NewPostgres(conn *pgx.Conn) (*Postgres, error) {
-	p := &Postgres{
+func NewPostgres(conn *pgx.Conn) *Postgres {
+	return &Postgres{
 		conn: conn,
 	}
+}
 
-	if _, err := p.conn.Exec(context.Background(), `
+func (p *Postgres) Init(ctx context.Context) error {
+	if _, err := p.conn.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS user_tokens (
     user_name char(40) primary key,
     user_key char(40) not null,
     token char(40) not null
 );`); err != nil {
-		return nil, fmt.Errorf("failed to create table user_tokens")
+		return fmt.Errorf("failed to create table user_tokens")
 	}
 
-	return p, nil
+	return nil
 }
 
 func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, error) {

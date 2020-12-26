@@ -16,14 +16,20 @@ const (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Panic(err)
+	}
+}
+
+func run() error {
 	config, err := InitConfig()
 	if err != nil {
-		log.Panicf("failed to init config: %v", err)
+		return fmt.Errorf("failed to init config: %w", err)
 	}
 
 	dbConn, err := pgx.Connect(context.Background(), config.DatabaseURL)
 	if err != nil {
-		log.Panicf("unable to connect to database %s: %v", config.DatabaseURL, err)
+		return fmt.Errorf("unable to connect to database %s: %w", config.DatabaseURL, err)
 	}
 
 	defer func() {
@@ -32,21 +38,22 @@ func main() {
 		}
 	}()
 
-	pg, err := NewPostgres(dbConn)
-	if err != nil {
-		log.Panicf("failed to create postgres: %v", err)
+	pg := NewPostgres(dbConn)
+
+	if errInit := pg.Init(context.Background()); errInit != nil {
+		return fmt.Errorf("failed to init postgres: %w", errInit)
 	}
 
 	bot, err := tgbotapi.NewBotAPI(config.BotAPIKey)
 	if err != nil {
-		log.Panicf("failed to init bot api: %v", err)
+		return fmt.Errorf("failed to init bot api: %w", err)
 	}
 
 	bot.Debug = config.Debug
 
 	updates, err := updates(bot, config)
 	if err != nil {
-		log.Panicf("failed to init bot api: %v", err)
+		return fmt.Errorf("failed to init bot api: %w", err)
 	}
 
 	go listen(config.Debug, ":"+config.Port)
@@ -66,6 +73,8 @@ func main() {
 			log.Printf("failed to process message: %v", err)
 		}
 	}
+
+	return nil
 }
 
 func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, error) {
