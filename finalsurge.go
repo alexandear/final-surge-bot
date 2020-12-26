@@ -37,10 +37,12 @@ type FinalSurgeLogin struct {
 
 type FinalSurgeWorkoutList struct {
 	FinalSurgeStatus
-	Data []struct {
-		WorkoutDate string `json:"workout_date"`
-		Description string `json:"description"`
-	}
+	Data []FinalSurgeWorkoutData
+}
+
+type FinalSurgeWorkoutData struct {
+	WorkoutDate string `json:"workout_date"`
+	Description string `json:"description"`
 }
 
 type FinalSurgeStatus struct {

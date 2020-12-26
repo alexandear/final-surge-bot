@@ -147,30 +147,74 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) err
 		return nil
 	}
 
-	today := time.Now()
+	today := newDate(time.Now())
+	tomorrow := today.AddDate(0, 0, 1)
 
-	workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, today)
+	workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, tomorrow)
 	if err != nil {
 		return fmt.Errorf("failed to get workouts: %w", err)
 	}
 
-	text := strings.Builder{}
-	text.WriteString("Tasks:")
-	text.WriteByte('\n')
-	text.WriteString("Today ")
-	text.WriteString(today.Format("02.01"))
-	text.WriteByte(':')
-	text.WriteByte('\n')
+	task := messageTask(workoutList.Data, today, tomorrow)
 
-	for _, w := range workoutList.Data {
-		text.WriteString(w.Description)
-		text.WriteByte('\n')
-	}
-
-	msg := tgbotapi.NewMessage(chatID, text.String())
+	msg := tgbotapi.NewMessage(chatID, task)
 	if _, err := b.bot.Send(msg); err != nil {
 		return fmt.Errorf("failed to send msg about tasks: %w", err)
 	}
 
 	return nil
+}
+
+func messageTask(data []FinalSurgeWorkoutData, today, tomorrow time.Time) string {
+	todayDescriptions := make([]string, 0, len(data))
+	tomorrowDescriptions := make([]string, 0, len(data))
+
+	for _, w := range data {
+		workoutDate, err := time.Parse("2006-01-02T15:04:05", w.WorkoutDate)
+		if err != nil {
+			log.Printf("failed to parse workout date %s : %v", w.WorkoutDate, err)
+
+			continue
+		}
+
+		if workoutDate.Equal(today) {
+			todayDescriptions = append(todayDescriptions, w.Description)
+
+			continue
+		}
+
+		tomorrowDescriptions = append(tomorrowDescriptions, w.Description)
+	}
+
+	task := strings.Builder{}
+	task.WriteString("Tasks:")
+	task.WriteByte('\n')
+
+	writeDescriptions := func(day string, date time.Time, descriptions []string) {
+		task.WriteString(day)
+		task.WriteByte(' ')
+		task.WriteString(date.Format("02.01"))
+		task.WriteByte(':')
+		task.WriteByte('\n')
+
+		if len(descriptions) != 0 {
+			for _, d := range descriptions {
+				task.WriteString(d)
+				task.WriteByte('\n')
+			}
+		} else {
+			task.WriteString("not set")
+			task.WriteByte('\n')
+		}
+	}
+
+	writeDescriptions("Today", today, todayDescriptions)
+	task.WriteByte('\n')
+	writeDescriptions("Tomorrow", tomorrow, tomorrowDescriptions)
+
+	return task.String()
+}
+
+func newDate(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
