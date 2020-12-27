@@ -69,12 +69,8 @@ func run() error {
 	b := NewBot(bot, pg, fs)
 
 	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-
-		if err := b.ProcessMessage(context.Background(), update.Message); err != nil {
-			log.Printf("failed to process message: %v", err)
+		if err := b.ProcessUpdate(context.Background(), update); err != nil {
+			log.Printf("failed to process update: %v", err)
 		}
 	}
 

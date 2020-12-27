@@ -63,13 +63,39 @@ func NewBot(bot *tgbotapi.BotAPI, db *Postgres, fs *FinalSurgeAPI) *Bot {
 	}
 }
 
-func (b *Bot) ProcessMessage(ctx context.Context, message *tgbotapi.Message) error {
+func (b *Bot) ProcessUpdate(ctx context.Context, update tgbotapi.Update) error {
+	if update.Message == nil {
+		return nil
+	}
+
+	msg, err := b.message(ctx, update.Message)
+	if err != nil {
+		return fmt.Errorf("failed to get message: %w", err)
+	}
+
+	if msg == nil {
+		return nil
+	}
+
+	if _, err := b.bot.Send(*msg); err != nil {
+		return fmt.Errorf("failed to send reply msg to chat %d: %w", msg.ChatID, err)
+	}
+
+	return nil
+}
+
+func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi.MessageConfig, error) {
 	userName := message.From.UserName
 	chatID := message.Chat.ID
 	text := message.Text
 
 	if message.IsCommand() && message.Command() == CommandStart {
-		return b.commandStart(ctx, userName, chatID)
+		b.userEnterCreds[userName] = EnterLogin
+		b.userCreds[userName] = &Cred{}
+
+		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge email:")
+
+		return &msg, nil
 	}
 
 	if text == KeyboardButtonTask {
@@ -82,14 +108,11 @@ func (b *Bot) ProcessMessage(ctx context.Context, message *tgbotapi.Message) err
 		cred := b.userCreds[userName]
 		cred.Email = text
 
-		msgText := "Enter FinalSurge password:"
-		msg := tgbotapi.NewMessage(chatID, msgText)
-
-		if _, err := b.bot.Send(msg); err != nil {
-			return fmt.Errorf("failed to send msg %s: %w", msgText, err)
-		}
-
 		b.userEnterCreds[userName] = EnterPassword
+
+		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge password:")
+
+		return &msg, nil
 	case EnterPassword:
 		cred := b.userCreds[userName]
 		cred.Password = text
@@ -98,7 +121,7 @@ func (b *Bot) ProcessMessage(ctx context.Context, message *tgbotapi.Message) err
 
 		login, err := b.fs.Login(ctx, cred.Email, cred.Password)
 		if err != nil {
-			return fmt.Errorf("failed to login: %w", err)
+			return nil, fmt.Errorf("failed to login: %w", err)
 		}
 
 		userToken := UserToken{
@@ -107,44 +130,28 @@ func (b *Bot) ProcessMessage(ctx context.Context, message *tgbotapi.Message) err
 		}
 
 		if err := b.db.UpdateUserToken(ctx, userName, userToken); err != nil {
-			return fmt.Errorf("failed to update user token: %w", err)
+			return nil, fmt.Errorf("failed to update user token: %w", err)
 		}
 
 		msg := tgbotapi.NewMessage(chatID, "Choose option:")
 		msg.ReplyMarkup = b.keyboard
 
-		if _, err := b.bot.Send(msg); err != nil {
-			return fmt.Errorf("failed to set keyboard markup: %w", err)
-		}
+		return &msg, nil
 	default:
 		log.Printf("unknown enter value %d", enter)
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (b *Bot) commandStart(_ context.Context, userName string, chatID int64) error {
-	text := "Enter FinalSurge email:"
-	msg := tgbotapi.NewMessage(chatID, text)
-
-	if _, err := b.bot.Send(msg); err != nil {
-		return fmt.Errorf("failed to send msg %s: %w", text, err)
-	}
-
-	b.userEnterCreds[userName] = EnterLogin
-	b.userCreds[userName] = &Cred{}
-
-	return nil
-}
-
-func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) error {
+func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*tgbotapi.MessageConfig, error) {
 	userToken, err := b.db.UserToken(ctx, userName)
 	if err != nil {
-		return fmt.Errorf("failed to get usertoken: %w", err)
+		return nil, fmt.Errorf("failed to get usertoken: %w", err)
 	}
 
 	if userToken.UserKey == "" {
-		return nil
+		return nil, nil
 	}
 
 	today := newDate(time.Now())
@@ -152,17 +159,14 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) err
 
 	workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, tomorrow)
 	if err != nil {
-		return fmt.Errorf("failed to get workouts: %w", err)
+		return nil, fmt.Errorf("failed to get workouts: %w", err)
 	}
 
 	task := messageTask(workoutList.Data, today, tomorrow)
 
 	msg := tgbotapi.NewMessage(chatID, task)
-	if _, err := b.bot.Send(msg); err != nil {
-		return fmt.Errorf("failed to send msg about tasks: %w", err)
-	}
 
-	return nil
+	return &msg, nil
 }
 
 func messageTask(data []FinalSurgeWorkoutData, today, tomorrow time.Time) string {

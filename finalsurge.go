@@ -8,11 +8,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
 const (
 	finalSurgeAPIData = "https://beta.finalsurge.com/api/Data"
+
+	activityTypeNameRestDay = "Rest Day"
 )
 
 type FinalSurgeAPI struct {
@@ -158,7 +161,7 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 }
 
 func IsRestDay(data FinalSurgeWorkoutData) bool {
-	return len(data.Activities) == 1 && data.Activities[0].ActivityTypeName == "Rest Day"
+	return len(data.Activities) == 1 && strings.EqualFold(data.Activities[0].ActivityTypeName, activityTypeNameRestDay)
 }
 
 func newFinalSurgeError(status FinalSurgeStatus) error {
