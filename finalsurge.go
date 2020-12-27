@@ -41,8 +41,13 @@ type FinalSurgeWorkoutList struct {
 }
 
 type FinalSurgeWorkoutData struct {
-	WorkoutDate string `json:"workout_date"`
-	Description string `json:"description"`
+	WorkoutDate string               `json:"workout_date"`
+	Description *string              `json:"description"`
+	Activities  []FinalSurgeActivity `json:"activities"`
+}
+
+type FinalSurgeActivity struct {
+	ActivityTypeName string `json:"activity_type_name"`
 }
 
 type FinalSurgeStatus struct {
@@ -148,6 +153,10 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 	}
 
 	return workoutList, nil
+}
+
+func IsRestDay(data FinalSurgeWorkoutData) bool {
+	return len(data.Activities) == 1 && data.Activities[0].ActivityTypeName == "Rest Day"
 }
 
 func newFinalSurgeError(status FinalSurgeStatus) error {

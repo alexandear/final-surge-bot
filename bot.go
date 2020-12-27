@@ -169,21 +169,33 @@ func messageTask(data []FinalSurgeWorkoutData, today, tomorrow time.Time) string
 	todayDescriptions := make([]string, 0, len(data))
 	tomorrowDescriptions := make([]string, 0, len(data))
 
+	desc := func(data FinalSurgeWorkoutData) string {
+		if IsRestDay(data) {
+			return "Rest Day"
+		}
+
+		if data.Description != nil {
+			return *data.Description
+		}
+
+		return ""
+	}
+
 	for _, w := range data {
-		workoutDate, err := time.Parse("2006-01-02T15:04:05", w.WorkoutDate)
+		date, err := time.Parse("2006-01-02T15:04:05", w.WorkoutDate)
 		if err != nil {
 			log.Printf("failed to parse workout date %s : %v", w.WorkoutDate, err)
 
 			continue
 		}
 
-		if workoutDate.Equal(today) {
-			todayDescriptions = append(todayDescriptions, w.Description)
-
-			continue
+		switch {
+		case date.Equal(today):
+			todayDescriptions = append(todayDescriptions, desc(w))
+		case date.Equal(tomorrow):
+			tomorrowDescriptions = append(tomorrowDescriptions, desc(w))
+		default:
 		}
-
-		tomorrowDescriptions = append(tomorrowDescriptions, w.Description)
 	}
 
 	task := strings.Builder{}
