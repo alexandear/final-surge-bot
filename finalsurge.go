@@ -26,18 +26,20 @@ type FinalSurgeCred struct {
 
 type FinalSurgeLogin struct {
 	FinalSurgeStatus
-	Data struct {
-		UserKey   string `json:"user_key"`
-		Token     string `json:"token"`
-		FirstName string `json:"first_name"`
-		LastName  string `json:"last_name"`
-		Email     string `json:"email"`
-	}
+	Data FinalSurgeLoginData `json:"data"`
+}
+
+type FinalSurgeLoginData struct {
+	UserKey   string `json:"user_key"`
+	Token     string `json:"token"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
 }
 
 type FinalSurgeWorkoutList struct {
 	FinalSurgeStatus
-	Data []FinalSurgeWorkoutData
+	Data []FinalSurgeWorkoutData `json:"data"`
 }
 
 type FinalSurgeWorkoutData struct {
