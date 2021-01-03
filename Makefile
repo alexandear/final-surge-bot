@@ -39,3 +39,9 @@ vendor:
 	@echo vendor
 	@-rm -rf vendor/
 	@go mod vendor
+
+.PHONY: generate
+generate:
+	@echo generate
+	@go install github.com/golang/mock/mockgen
+	@go generate ./...

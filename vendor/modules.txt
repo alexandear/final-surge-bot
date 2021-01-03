@@ -55,6 +55,11 @@ github.com/gobwas/glob/util/runes
 github.com/gobwas/glob/util/strings
 # github.com/gofrs/flock v0.8.0
 github.com/gofrs/flock
+# github.com/golang/mock v1.3.1
+## explicit
+github.com/golang/mock/gomock
+github.com/golang/mock/mockgen
+github.com/golang/mock/mockgen/model
 # github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2
 github.com/golangci/check/cmd/structcheck
 github.com/golangci/check/cmd/varcheck

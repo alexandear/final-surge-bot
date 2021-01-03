@@ -1,9 +1,53 @@
 package main
 
 import (
+	"context"
+	"math/rand"
 	"testing"
 	"time"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/golang/mock/gomock"
 )
+
+func TestBot_ProcessUpdate(t *testing.T) {
+	t.Run("start", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		senderMock := NewMockSender(ctrl)
+		fsMock := NewMockFinalSurge(ctrl)
+		storageMock := NewMockStorage(ctrl)
+		bot := NewBot(senderMock, storageMock, fsMock)
+
+		const userName = "alexandear"
+		chatID := int64(rand.Int())
+		entities := []tgbotapi.MessageEntity{
+			{Type: "bot_command", Offset: 0, Length: 21},
+		}
+		const text = "/start@final_surge_bot"
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: chatID,
+			},
+			Text: "Enter FinalSurge email:",
+		}).Times(1)
+
+		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{
+					ID: chatID,
+				},
+				From: &tgbotapi.User{
+					UserName: userName,
+				},
+				Entities: &entities,
+				Text:     text,
+			},
+		}); err != nil {
+			t.Fatalf("start failed: %v", err)
+		}
+	})
+}
 
 func TestBot_messageTask(t *testing.T) {
 	for name, tc := range map[string]struct {

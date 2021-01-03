@@ -37,10 +37,26 @@ type Cred struct {
 	Password string `json:"password"`
 }
 
+type Sender interface {
+	Send(msg tgbotapi.Chattable) (tgbotapi.Message, error)
+}
+
+type Storage interface {
+	UserToken(ctx context.Context, userName string) (UserToken, error)
+	UpdateUserToken(ctx context.Context, userName string, userToken UserToken) error
+}
+
+type FinalSurge interface {
+	Login(ctx context.Context, email, password string) (FinalSurgeLogin, error)
+	Workouts(ctx context.Context, userToken, userKey string, startDate, endDate time.Time,
+	) (FinalSurgeWorkoutList, error)
+}
+
+//go:generate mockgen -source=$GOFILE -package main -destination interfaces_mock.go
 type Bot struct {
-	bot *tgbotapi.BotAPI
-	db  *Postgres
-	fs  *FinalSurgeAPI
+	bot Sender
+	db  Storage
+	fs  FinalSurge
 
 	keyboard tgbotapi.ReplyKeyboardMarkup
 
@@ -48,7 +64,7 @@ type Bot struct {
 	userCreds      map[string]*Cred
 }
 
-func NewBot(bot *tgbotapi.BotAPI, db *Postgres, fs *FinalSurgeAPI) *Bot {
+func NewBot(bot Sender, db Storage, fs FinalSurge) *Bot {
 	return &Bot{
 		bot: bot,
 		db:  db,
