@@ -75,7 +75,7 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (Fina
 		return FinalSurgeLogin{}, fmt.Errorf("failed to marshal cred: %w", err)
 	}
 
-	bs, err := f.responseBytes(ctx, http.MethodGet, q, nil, bc)
+	bs, err := f.responseBytes(ctx, http.MethodPost, q, nil, bc)
 	if err != nil {
 		return FinalSurgeLogin{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
