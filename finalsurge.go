@@ -101,7 +101,10 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 	q.Add("startdate", workoutDate(startDate))
 	q.Add("enddate", workoutDate(endDate))
 
-	bs, err := f.responseBytes(ctx, http.MethodGet, q, map[string]string{"Authorization": "Bearer " + userToken}, nil)
+	header := http.Header{}
+	header.Add("Authorization", "Bearer "+userToken)
+
+	bs, err := f.responseBytes(ctx, http.MethodGet, q, header, nil)
 	if err != nil {
 		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
@@ -118,7 +121,7 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 	return workoutList, nil
 }
 
-func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, headers map[string]string,
+func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, header http.Header,
 	body []byte) ([]byte, error) {
 	u, err := url.Parse(finalSurgeAPIData)
 	if err != nil {
@@ -132,9 +135,7 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
+	req.Header = header
 
 	resp, err := f.client.Do(req)
 	if err != nil {
