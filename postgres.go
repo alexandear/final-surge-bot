@@ -39,7 +39,7 @@ func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, e
 	}
 
 	if rows.Err() != nil {
-		return UserToken{}, fmt.Errorf("failed rows: %w", err)
+		return UserToken{}, fmt.Errorf("failed rows: %w", rows.Err())
 	}
 
 	return userToken, nil
