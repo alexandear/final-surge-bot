@@ -138,6 +138,7 @@ func listen(debug bool, addr string) {
 		log.Printf("start listening on %s", addr)
 	}
 
+	http.DefaultServeMux.Handle("/", http.FileServer(http.Dir("./web")))
 	http.DefaultServeMux.Handle("/check", checkHandler(debug))
 
 	if err := http.ListenAndServe(addr, nil); err != nil {
