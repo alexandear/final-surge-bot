@@ -64,14 +64,8 @@ type FinalSurgeStatus struct {
 }
 
 func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (FinalSurgeLogin, error) {
-	u, err := url.Parse(finalSurgeAPIData)
-	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
-	}
-
-	q := u.Query()
-	q.Set("request", "login")
-	u.RawQuery = q.Encode()
+	q := make(url.Values)
+	q.Add("request", "login")
 
 	bc, err := json.Marshal(&FinalSurgeCred{
 		Email:    email,
@@ -81,23 +75,9 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (Fina
 		return FinalSurgeLogin{}, fmt.Errorf("failed to marshal cred: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(bc))
+	bs, err := f.responseBytes(ctx, http.MethodGet, q, nil, bc)
 	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := f.client.Do(req)
-	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to do request: %w", err)
-	}
-
-	bs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to read all: %w", err)
-	}
-
-	if err := resp.Body.Close(); err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to close body: %w", err)
+		return FinalSurgeLogin{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
 
 	var login FinalSurgeLogin
@@ -114,38 +94,16 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (Fina
 
 func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string, startDate, endDate time.Time,
 ) (FinalSurgeWorkoutList, error) {
-	u, err := url.Parse(finalSurgeAPIData)
+	q := make(url.Values)
+	q.Add("request", "WorkoutList")
+	q.Add("scope", "USER")
+	q.Add("scopekey", userKey)
+	q.Add("startdate", workoutDate(startDate))
+	q.Add("enddate", workoutDate(endDate))
+
+	bs, err := f.responseBytes(ctx, http.MethodGet, q, map[string]string{"Authorization": "Bearer " + userToken}, nil)
 	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to parse final surge api data url: %w", err)
-	}
-
-	q := u.Query()
-	q.Set("request", "WorkoutList")
-	q.Set("scope", "USER")
-	q.Set("scopekey", userKey)
-	q.Set("startdate", startDate.Format("2006-01-02"))
-	q.Set("enddate", endDate.Format("2006-01-02"))
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+userToken)
-
-	resp, err := f.client.Do(req)
-	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to do request: %w", err)
-	}
-
-	bs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to read all: %w", err)
-	}
-
-	if err := resp.Body.Close(); err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to close body: %w", err)
+		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
 
 	var workoutList FinalSurgeWorkoutList
@@ -158,6 +116,45 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string,
 	}
 
 	return workoutList, nil
+}
+
+func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, headers map[string]string,
+	body []byte) ([]byte, error) {
+	u, err := url.Parse(finalSurgeAPIData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse api data url: %w", err)
+	}
+
+	u.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := f.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to do request: %w", err)
+	}
+
+	bs, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read all from response body: %w", err)
+	}
+
+	if err := resp.Body.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close body: %w", err)
+	}
+
+	return bs, nil
+}
+
+func workoutDate(t time.Time) string {
+	return t.Format("2006-01-02")
 }
 
 func IsRestDay(data FinalSurgeWorkoutData) bool {
