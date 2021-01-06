@@ -126,10 +126,10 @@ func (m *MockFinalSurge) EXPECT() *MockFinalSurgeMockRecorder {
 }
 
 // Login mocks base method
-func (m *MockFinalSurge) Login(ctx context.Context, email, password string) (FinalSurgeLogin, error) {
+func (m *MockFinalSurge) Login(ctx context.Context, email, password string) (UserToken, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Login", ctx, email, password)
-	ret0, _ := ret[0].(FinalSurgeLogin)
+	ret0, _ := ret[0].(UserToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -141,18 +141,18 @@ func (mr *MockFinalSurgeMockRecorder) Login(ctx, email, password interface{}) *g
 }
 
 // Workouts mocks base method
-func (m *MockFinalSurge) Workouts(ctx context.Context, userToken, userKey string, startDate, endDate time.Time) (FinalSurgeWorkoutList, error) {
+func (m *MockFinalSurge) Workouts(ctx context.Context, userToken UserToken, startDate, endDate time.Time) ([]Workout, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Workouts", ctx, userToken, userKey, startDate, endDate)
-	ret0, _ := ret[0].(FinalSurgeWorkoutList)
+	ret := m.ctrl.Call(m, "Workouts", ctx, userToken, startDate, endDate)
+	ret0, _ := ret[0].([]Workout)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Workouts indicates an expected call of Workouts
-func (mr *MockFinalSurgeMockRecorder) Workouts(ctx, userToken, userKey, startDate, endDate interface{}) *gomock.Call {
+func (mr *MockFinalSurgeMockRecorder) Workouts(ctx, userToken, startDate, endDate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Workouts", reflect.TypeOf((*MockFinalSurge)(nil).Workouts), ctx, userToken, userKey, startDate, endDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Workouts", reflect.TypeOf((*MockFinalSurge)(nil).Workouts), ctx, userToken, startDate, endDate)
 }
 
 // MockClock is a mock of Clock interface

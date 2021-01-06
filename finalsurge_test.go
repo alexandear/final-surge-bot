@@ -18,7 +18,7 @@ func TestFinalSurgeAPI_Login(t *testing.T) {
 	t.Logf("%+v", login)
 }
 
-func finalSurgeLogin(t *testing.T, fs *FinalSurgeAPI) FinalSurgeLogin {
+func finalSurgeLogin(t *testing.T, fs *FinalSurgeAPI) UserToken {
 	email, password := finalSurgeCred()
 	if email == "" || password == "" {
 		t.Skip()
@@ -39,23 +39,15 @@ func TestFinalSurgeAPI_Workouts(t *testing.T) {
 	login := finalSurgeLogin(t, fs)
 
 	now := time.Now()
-	workouts, err := fs.Workouts(context.Background(), login.Data.Token, login.Data.UserKey, now, now.AddDate(0, 0, 1))
+	workouts, err := fs.Workouts(context.Background(), login, now, now.AddDate(0, 0, 1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Logf("%+v", workouts)
-	for _, w := range workouts.Data {
-		t.Log("workout:")
-		t.Log("activities:")
-		for _, a := range w.Activities {
-			t.Logf("  activity type name: %s", a.ActivityTypeName)
-		}
-
-		t.Logf("workout date: %s", w.WorkoutDate)
-		if w.Description != nil {
-			t.Logf("description: %s", *w.Description)
-		}
+	for _, w := range workouts {
+		t.Logf("workout date: %v", w.Date)
+		t.Logf("description: %s", w.Description)
 	}
 }
 

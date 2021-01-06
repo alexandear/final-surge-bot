@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -63,7 +64,7 @@ type FinalSurgeStatus struct {
 	CallID           *string `json:"call_id"`
 }
 
-func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (FinalSurgeLogin, error) {
+func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (UserToken, error) {
 	q := make(url.Values)
 	q.Add("request", "login")
 
@@ -72,53 +73,84 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (Fina
 		Password: password,
 	})
 	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to marshal cred: %w", err)
+		return UserToken{}, fmt.Errorf("failed to marshal cred: %w", err)
 	}
 
 	bs, err := f.responseBytes(ctx, http.MethodPost, q, nil, bc)
 	if err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to get response bytes: %w", err)
+		return UserToken{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
 
 	var login FinalSurgeLogin
 	if err := json.Unmarshal(bs, &login); err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to unmarshal login: %w", err)
+		return UserToken{}, fmt.Errorf("failed to unmarshal login: %w", err)
 	}
 
 	if err := newFinalSurgeError(login.FinalSurgeStatus); err != nil {
-		return FinalSurgeLogin{}, fmt.Errorf("failed to get login: %w", err)
+		return UserToken{}, fmt.Errorf("failed to get login: %w", err)
 	}
 
-	return login, nil
+	return UserToken{
+		UserKey: login.Data.UserKey,
+		Token:   login.Data.Token,
+	}, nil
 }
 
-func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken, userKey string, startDate, endDate time.Time,
-) (FinalSurgeWorkoutList, error) {
+func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, startDate, endDate time.Time,
+) ([]Workout, error) {
 	q := make(url.Values)
 	q.Add("request", "WorkoutList")
 	q.Add("scope", "USER")
-	q.Add("scopekey", userKey)
-	q.Add("startdate", workoutDate(startDate))
-	q.Add("enddate", workoutDate(endDate))
+	q.Add("scopekey", userToken.UserKey)
+	q.Add("startdate", finalSurgeDate(startDate))
+	q.Add("enddate", finalSurgeDate(endDate))
 
 	header := http.Header{}
-	header.Add("Authorization", "Bearer "+userToken)
+	header.Add("Authorization", "Bearer "+userToken.Token)
 
 	bs, err := f.responseBytes(ctx, http.MethodGet, q, header, nil)
 	if err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get response bytes: %w", err)
+		return nil, fmt.Errorf("failed to get response bytes: %w", err)
 	}
 
 	var workoutList FinalSurgeWorkoutList
 	if err := json.Unmarshal(bs, &workoutList); err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to unmarshal: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
 	if err := newFinalSurgeError(workoutList.FinalSurgeStatus); err != nil {
-		return FinalSurgeWorkoutList{}, fmt.Errorf("failed to get workouts: %w", err)
+		return nil, fmt.Errorf("failed to get workouts: %w", err)
 	}
 
-	return workoutList, nil
+	desc := func(data FinalSurgeWorkoutData) string {
+		if isRestDay(data) {
+			return "Rest Day"
+		}
+
+		if data.Description != nil {
+			return *data.Description
+		}
+
+		return ""
+	}
+
+	workouts := make([]Workout, 0, len(workoutList.Data))
+
+	for _, w := range workoutList.Data {
+		date, err := time.Parse("2006-01-02T15:04:05", w.WorkoutDate)
+		if err != nil {
+			log.Printf("failed to parse workout date %s : %v", w.WorkoutDate, err)
+
+			continue
+		}
+
+		workouts = append(workouts, Workout{
+			Date:        NewDate(date),
+			Description: desc(w),
+		})
+	}
+
+	return workouts, nil
 }
 
 func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, header http.Header,
@@ -154,11 +186,11 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 	return bs, nil
 }
 
-func workoutDate(t time.Time) string {
+func finalSurgeDate(t time.Time) string {
 	return t.Format("2006-01-02")
 }
 
-func IsRestDay(data FinalSurgeWorkoutData) bool {
+func isRestDay(data FinalSurgeWorkoutData) bool {
 	return len(data.Activities) == 1 && strings.EqualFold(data.Activities[0].ActivityTypeName, activityTypeNameRestDay)
 }
 

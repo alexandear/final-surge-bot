@@ -56,13 +56,7 @@ func TestBot_ProcessUpdate(t *testing.T) {
 			UserKey: "b0d1c67e-0d8c-4b67-8faa-c02104ec4f72",
 			Token:   "7f2a5f06-1b20-4dde-ba31-2c0a33be6b69",
 		}
-		login := FinalSurgeLogin{
-			Data: FinalSurgeLoginData{
-				UserKey: userToken.UserKey,
-				Token:   userToken.Token,
-			},
-		}
-		fsMock.EXPECT().Login(gomock.Any(), email, password).Return(login, nil).Times(1)
+		fsMock.EXPECT().Login(gomock.Any(), email, password).Return(userToken, nil).Times(1)
 		storageMock.EXPECT().UpdateUserToken(gomock.Any(), userName, userToken).Return(nil).Times(1)
 		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
@@ -101,14 +95,12 @@ func TestBot_ProcessUpdate(t *testing.T) {
 		today := time.Date(2020, time.December, 20, 0, 0, 0, 0, time.UTC)
 		clockMock.EXPECT().Now().Return(now).Times(1)
 		storageMock.EXPECT().UserToken(gomock.Any(), userName).Return(userToken, nil).Times(1)
-		fsMock.EXPECT().Workouts(gomock.Any(), userToken.Token, userToken.UserKey,
+		fsMock.EXPECT().Workouts(gomock.Any(), userToken,
 			today, time.Date(2020, time.December, 21, 0, 0, 0, 0, time.UTC)).
-			Return(FinalSurgeWorkoutList{
-				Data: []FinalSurgeWorkoutData{
-					{
-						WorkoutDate: "2020-12-20T00:00:00",
-						Description: ptrString("10 km"),
-					},
+			Return([]Workout{
+				{
+					Date:        today,
+					Description: "10 km",
 				},
 			}, nil).Times(1)
 		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
@@ -134,23 +126,25 @@ not set
 }
 
 func TestBot_messageTask(t *testing.T) {
+	today := time.Date(2020, time.December, 23, 0, 0, 0, 0, time.UTC)
+	tomorrow := time.Date(2020, time.December, 24, 0, 0, 0, 0, time.UTC)
 	for name, tc := range map[string]struct {
-		data     []FinalSurgeWorkoutData
+		data     []Workout
 		expected string
 	}{
 		"today and tomorrow": {
-			data: []FinalSurgeWorkoutData{
+			data: []Workout{
 				{
-					WorkoutDate: "2020-12-23T00:00:00",
-					Description: ptrString("Warm-up"),
+					Date:        today,
+					Description: "Warm-up",
 				},
 				{
-					WorkoutDate: "2020-12-23T00:00:00",
-					Description: ptrString("6 km"),
+					Date:        today,
+					Description: "6 km",
 				},
 				{
-					WorkoutDate: "2020-12-24T00:00:00",
-					Description: ptrString("12 km"),
+					Date:        tomorrow,
+					Description: "12 km",
 				},
 			},
 			expected: `Tasks:
@@ -163,10 +157,10 @@ Tomorrow 24.12:
 `,
 		},
 		"today not set": {
-			data: []FinalSurgeWorkoutData{
+			data: []Workout{
 				{
-					WorkoutDate: "2020-12-24T00:00:00",
-					Description: ptrString("12 km"),
+					Date:        tomorrow,
+					Description: "12 km",
 				},
 			},
 			expected: `Tasks:
@@ -178,14 +172,14 @@ Tomorrow 24.12:
 `,
 		},
 		"tomorrow not set": {
-			data: []FinalSurgeWorkoutData{
+			data: []Workout{
 				{
-					WorkoutDate: "2020-12-23T00:00:00",
-					Description: ptrString("Warm-up"),
+					Date:        today,
+					Description: "Warm-up",
 				},
 				{
-					WorkoutDate: "2020-12-23T00:00:00",
-					Description: ptrString("6 km"),
+					Date:        today,
+					Description: "6 km",
 				},
 			},
 			expected: `Tasks:
@@ -198,50 +192,22 @@ not set
 `,
 		},
 		"today and tomorrow not set": {
-			data: []FinalSurgeWorkoutData{},
+			data: []Workout{},
 			expected: `Tasks:
 Today 23.12:
 not set
 
 Tomorrow 24.12:
 not set
-`,
-		},
-		"rest day": {
-			data: []FinalSurgeWorkoutData{
-				{
-					WorkoutDate: "2020-12-23T00:00:00",
-					Activities: []FinalSurgeActivity{
-						{
-							ActivityTypeName: "Rest Day",
-						},
-					},
-				},
-				{
-					WorkoutDate: "2020-12-24T00:00:00",
-					Description: ptrString("12 km"),
-				},
-			},
-			expected: `Tasks:
-Today 23.12:
-Rest Day
-
-Tomorrow 24.12:
-12 km
 `,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			actual := messageTask(tc.data, time.Date(2020, time.December, 23, 0, 0, 0, 0, time.UTC),
-				time.Date(2020, time.December, 24, 0, 0, 0, 0, time.UTC))
+			actual := messageTask(tc.data, today, tomorrow)
 
 			if actual != tc.expected {
 				t.Errorf("actual=%s, expected=%s", actual, tc.expected)
 			}
 		})
 	}
-}
-
-func ptrString(s string) *string {
-	return &s
 }
