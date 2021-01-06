@@ -11,16 +11,11 @@ import (
 
 const (
 	CommandStart = "start"
-)
 
-const (
 	KeyboardButtonTask = "/task"
-)
 
-type Cred struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
+	Emails = 100
+)
 
 type UserToken struct {
 	UserKey string
@@ -59,7 +54,7 @@ type Bot struct {
 
 	keyboard tgbotapi.ReplyKeyboardMarkup
 
-	userCreds map[string]*Cred
+	userEmails map[string]string
 }
 
 func NewBot(bot Sender, db Storage, fs FinalSurge, clock Clock) *Bot {
@@ -73,7 +68,7 @@ func NewBot(bot Sender, db Storage, fs FinalSurge, clock Clock) *Bot {
 			tgbotapi.NewKeyboardButton(KeyboardButtonTask),
 		)),
 
-		userCreds: make(map[string]*Cred),
+		userEmails: make(map[string]string, Emails),
 	}
 }
 
@@ -104,7 +99,7 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 	text := message.Text
 
 	if message.IsCommand() && message.Command() == CommandStart {
-		b.userCreds[userName] = &Cred{}
+		b.userEmails[userName] = ""
 
 		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge email:")
 
@@ -115,22 +110,20 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 		return b.buttonTask(ctx, userName, chatID)
 	}
 
-	cred, ok := b.userCreds[userName]
+	email, ok := b.userEmails[userName]
 	if !ok {
 		return nil, nil
 	}
 
 	switch {
-	case cred.Email == "":
-		cred.Email = text
+	case email == "":
+		b.userEmails[userName] = text
 
 		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge password:")
 
 		return &msg, nil
-	case cred.Email != "":
-		cred.Password = text
-
-		userToken, err := b.fs.Login(ctx, cred.Email, cred.Password)
+	case email != "":
+		userToken, err := b.fs.Login(ctx, email, text)
 		if err != nil {
 			return nil, fmt.Errorf("failed to login: %w", err)
 		}
@@ -138,6 +131,8 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 		if err := b.db.UpdateUserToken(ctx, userName, userToken); err != nil {
 			return nil, fmt.Errorf("failed to update user token: %w", err)
 		}
+
+		b.userEmails[userName] = ""
 
 		msg := tgbotapi.NewMessage(chatID, "Choose option:")
 		msg.ReplyMarkup = b.keyboard
