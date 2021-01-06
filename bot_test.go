@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -11,40 +10,125 @@ import (
 )
 
 func TestBot_ProcessUpdate(t *testing.T) {
-	t.Run("start", func(t *testing.T) {
+	t.Run("enter email and password", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		senderMock := NewMockSender(ctrl)
 		fsMock := NewMockFinalSurge(ctrl)
 		storageMock := NewMockStorage(ctrl)
-		bot := NewBot(senderMock, storageMock, fsMock)
-
+		bot := NewBot(senderMock, storageMock, fsMock, nil)
 		const userName = "alexandear"
-		chatID := int64(rand.Int())
-		entities := []tgbotapi.MessageEntity{
-			{Type: "bot_command", Offset: 0, Length: 21},
-		}
-		const text = "/start@final_surge_bot"
-		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
-			BaseChat: tgbotapi.BaseChat{
-				ChatID: chatID,
-			},
-			Text: "Enter FinalSurge email:",
-		}).Times(1)
+		const chatID = int64(20)
 
+		const startCommand = "/start@final_surge_bot"
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{ChatID: chatID},
+			Text:     "Enter FinalSurge email:",
+		}).Times(1)
 		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
 			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{
-					ID: chatID,
-				},
-				From: &tgbotapi.User{
-					UserName: userName,
-				},
-				Entities: &entities,
-				Text:     text,
+				Chat:     &tgbotapi.Chat{ID: chatID},
+				From:     &tgbotapi.User{UserName: userName},
+				Entities: &[]tgbotapi.MessageEntity{{Type: "bot_command", Offset: 0, Length: len(startCommand)}},
+				Text:     startCommand,
 			},
 		}); err != nil {
-			t.Fatalf("start failed: %v", err)
+			t.Fatal(err)
+		}
+
+		const email = "user@example.com"
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{ChatID: chatID},
+			Text:     "Enter FinalSurge password:",
+		}).Times(1)
+		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+				From: &tgbotapi.User{UserName: userName},
+				Text: email,
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		const password = "password"
+		userToken := UserToken{
+			UserKey: "b0d1c67e-0d8c-4b67-8faa-c02104ec4f72",
+			Token:   "7f2a5f06-1b20-4dde-ba31-2c0a33be6b69",
+		}
+		login := FinalSurgeLogin{
+			Data: FinalSurgeLoginData{
+				UserKey: userToken.UserKey,
+				Token:   userToken.Token,
+			},
+		}
+		fsMock.EXPECT().Login(gomock.Any(), email, password).Return(login, nil).Times(1)
+		storageMock.EXPECT().UpdateUserToken(gomock.Any(), userName, userToken).Return(nil).Times(1)
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID:      chatID,
+				ReplyMarkup: bot.keyboard,
+			},
+			Text: "Choose option:",
+		}).Times(1)
+		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+				From: &tgbotapi.User{UserName: userName},
+				Text: password,
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("button task", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		senderMock := NewMockSender(ctrl)
+		fsMock := NewMockFinalSurge(ctrl)
+		storageMock := NewMockStorage(ctrl)
+		clockMock := NewMockClock(ctrl)
+		bot := NewBot(senderMock, storageMock, fsMock, clockMock)
+		const userName = "alexandear"
+		const chatID = int64(20)
+
+		userToken := UserToken{
+			UserKey: "a0acc35a-c910-4f80-b410-b616d03cf917",
+			Token:   "d174c652-b12f-4aad-b730-a43a2c74fa9f",
+		}
+		now := time.Date(2020, time.December, 20, 15, 15, 20, 0, time.UTC)
+		today := time.Date(2020, time.December, 20, 0, 0, 0, 0, time.UTC)
+		clockMock.EXPECT().Now().Return(now).Times(1)
+		storageMock.EXPECT().UserToken(gomock.Any(), userName).Return(userToken, nil).Times(1)
+		fsMock.EXPECT().Workouts(gomock.Any(), userToken.Token, userToken.UserKey,
+			today, time.Date(2020, time.December, 21, 0, 0, 0, 0, time.UTC)).
+			Return(FinalSurgeWorkoutList{
+				Data: []FinalSurgeWorkoutData{
+					{
+						WorkoutDate: "2020-12-20T00:00:00",
+						Description: ptrString("10 km"),
+					},
+				},
+			}, nil).Times(1)
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{ChatID: chatID},
+			Text: `Tasks:
+Today 20.12:
+10 km
+
+Tomorrow 21.12:
+not set
+`,
+		}).Times(1)
+		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+				From: &tgbotapi.User{UserName: userName},
+				Text: "/task",
+			},
+		}); err != nil {
+			t.Fatal(err)
 		}
 	})
 }

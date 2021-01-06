@@ -52,11 +52,16 @@ type FinalSurge interface {
 	) (FinalSurgeWorkoutList, error)
 }
 
+type Clock interface {
+	Now() time.Time
+}
+
 //go:generate mockgen -source=$GOFILE -package main -destination interfaces_mock.go
 type Bot struct {
-	bot Sender
-	db  Storage
-	fs  FinalSurge
+	bot   Sender
+	db    Storage
+	fs    FinalSurge
+	clock Clock
 
 	keyboard tgbotapi.ReplyKeyboardMarkup
 
@@ -64,11 +69,12 @@ type Bot struct {
 	userCreds      map[string]*Cred
 }
 
-func NewBot(bot Sender, db Storage, fs FinalSurge) *Bot {
+func NewBot(bot Sender, db Storage, fs FinalSurge, clock Clock) *Bot {
 	return &Bot{
-		bot: bot,
-		db:  db,
-		fs:  fs,
+		bot:   bot,
+		db:    db,
+		fs:    fs,
+		clock: clock,
 
 		keyboard: tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton(KeyboardButtonTask),
@@ -170,7 +176,7 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*t
 		return nil, nil
 	}
 
-	today := newDate(time.Now())
+	today := newDate(b.clock.Now())
 	tomorrow := today.AddDate(0, 0, 1)
 
 	workoutList, err := b.fs.Workouts(context.Background(), userToken.Token, userToken.UserKey, today, tomorrow)

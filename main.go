@@ -66,7 +66,9 @@ func run() error {
 		},
 	}
 
-	b := NewBot(bot, pg, fs)
+	clock := &RealClock{}
+
+	b := NewBot(bot, pg, fs, clock)
 
 	for update := range updates {
 		if err := b.ProcessUpdate(context.Background(), update); err != nil {
