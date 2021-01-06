@@ -32,6 +32,15 @@ func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, e
 		return UserToken{}, fmt.Errorf("failed to query: %w", err)
 	}
 
+	values, err := rows.Values()
+	if err != nil {
+		return UserToken{}, fmt.Errorf("failed to get values: %w", err)
+	}
+
+	if len(values) == 0 {
+		return UserToken{}, ErrNotFound
+	}
+
 	for rows.Next() {
 		if errScan := rows.Scan(&userToken.UserKey, &userToken.Token); errScan != nil {
 			return UserToken{}, fmt.Errorf("failed during scan: %w", errScan)

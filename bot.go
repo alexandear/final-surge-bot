@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,6 +17,8 @@ const (
 
 	Emails = 100
 )
+
+var ErrNotFound = errors.New("not found")
 
 type UserToken struct {
 	UserKey string
@@ -145,12 +148,14 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 
 func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*tgbotapi.MessageConfig, error) {
 	userToken, err := b.db.UserToken(ctx, userName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get usertoken: %w", err)
+	if errors.Is(err, ErrNotFound) {
+		msg := tgbotapi.NewMessage(chatID, "Please authorize first by entering /start")
+
+		return &msg, nil
 	}
 
-	if userToken.UserKey == "" {
-		return nil, nil
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usertoken: %w", err)
 	}
 
 	today := NewDate(b.clock.Now())

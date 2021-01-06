@@ -10,7 +10,7 @@ import (
 )
 
 func TestBot_ProcessUpdate(t *testing.T) {
-	t.Run("enter email and password", func(t *testing.T) {
+	t.Run("start", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		senderMock := NewMockSender(ctrl)
@@ -70,6 +70,34 @@ func TestBot_ProcessUpdate(t *testing.T) {
 				Chat: &tgbotapi.Chat{ID: chatID},
 				From: &tgbotapi.User{UserName: userName},
 				Text: password,
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("token not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		senderMock := NewMockSender(ctrl)
+		fsMock := NewMockFinalSurge(ctrl)
+		storageMock := NewMockStorage(ctrl)
+		bot := NewBot(senderMock, storageMock, fsMock, nil)
+		const userName = "alexandear"
+		const chatID = int64(20)
+
+		storageMock.EXPECT().UserToken(gomock.Any(), userName).Return(UserToken{}, ErrNotFound).Times(1)
+		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
+			BaseChat: tgbotapi.BaseChat{
+				ChatID: chatID,
+			},
+			Text: "Please authorize first by entering /start",
+		}).Times(1)
+		if err := bot.ProcessUpdate(context.Background(), tgbotapi.Update{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+				From: &tgbotapi.User{UserName: userName},
+				Text: "/task",
 			},
 		}); err != nil {
 			t.Fatal(err)
