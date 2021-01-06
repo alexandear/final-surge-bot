@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -16,15 +15,6 @@ const (
 
 const (
 	KeyboardButtonTask = "/task"
-)
-
-type EnterCred int
-
-const (
-	EnterUnknown EnterCred = iota
-	EnterLogin
-	EnterPassword
-	EnterDone
 )
 
 type Cred struct {
@@ -69,8 +59,7 @@ type Bot struct {
 
 	keyboard tgbotapi.ReplyKeyboardMarkup
 
-	userEnterCreds map[string]EnterCred
-	userCreds      map[string]*Cred
+	userCreds map[string]*Cred
 }
 
 func NewBot(bot Sender, db Storage, fs FinalSurge, clock Clock) *Bot {
@@ -84,8 +73,7 @@ func NewBot(bot Sender, db Storage, fs FinalSurge, clock Clock) *Bot {
 			tgbotapi.NewKeyboardButton(KeyboardButtonTask),
 		)),
 
-		userEnterCreds: make(map[string]EnterCred),
-		userCreds:      make(map[string]*Cred),
+		userCreds: make(map[string]*Cred),
 	}
 }
 
@@ -116,7 +104,6 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 	text := message.Text
 
 	if message.IsCommand() && message.Command() == CommandStart {
-		b.userEnterCreds[userName] = EnterLogin
 		b.userCreds[userName] = &Cred{}
 
 		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge email:")
@@ -128,22 +115,20 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 		return b.buttonTask(ctx, userName, chatID)
 	}
 
-	switch enter := b.userEnterCreds[userName]; enter {
-	case EnterUnknown, EnterDone:
-	case EnterLogin:
-		cred := b.userCreds[userName]
-		cred.Email = text
+	cred, ok := b.userCreds[userName]
+	if !ok {
+		return nil, nil
+	}
 
-		b.userEnterCreds[userName] = EnterPassword
+	switch {
+	case cred.Email == "":
+		cred.Email = text
 
 		msg := tgbotapi.NewMessage(chatID, "Enter FinalSurge password:")
 
 		return &msg, nil
-	case EnterPassword:
-		cred := b.userCreds[userName]
+	case cred.Email != "":
 		cred.Password = text
-
-		b.userEnterCreds[userName] = EnterDone
 
 		userToken, err := b.fs.Login(ctx, cred.Email, cred.Password)
 		if err != nil {
@@ -158,8 +143,6 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 		msg.ReplyMarkup = b.keyboard
 
 		return &msg, nil
-	default:
-		log.Printf("unknown enter value %d", enter)
 	}
 
 	return nil, nil
