@@ -8,7 +8,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 const (
@@ -27,19 +27,15 @@ func run() error {
 		return fmt.Errorf("failed to init config: %w", err)
 	}
 
-	dbConn, err := pgx.Connect(context.Background(), config.DatabaseURL)
+	dbPool, err := pgxpool.Connect(context.Background(), config.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("unable to connect to database %s: %w", config.DatabaseURL, err)
 	}
 
-	defer func() {
-		if errClose := dbConn.Close(context.Background()); errClose != nil {
-			log.Printf("failed to close db conn: %v", errClose)
-		}
-	}()
+	defer dbPool.Close()
 
 	pg := &Postgres{
-		conn: dbConn,
+		dbPool: dbPool,
 	}
 
 	if errInit := pg.Init(context.Background()); errInit != nil {

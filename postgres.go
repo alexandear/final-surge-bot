@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Postgres struct {
-	conn *pgx.Conn
+	dbPool *pgxpool.Pool
 }
 
 func (p *Postgres) Init(ctx context.Context) error {
-	if _, err := p.conn.Exec(ctx, `
+	if _, err := p.dbPool.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS user_tokens (
     user_name char(40) primary key,
     user_key char(40) not null,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, error) {
 	var userToken UserToken
 
-	rows, err := p.conn.Query(ctx, `SELECT user_key, token FROM user_tokens WHERE user_name=$1`, userName)
+	rows, err := p.dbPool.Query(ctx, `SELECT user_key, token FROM user_tokens WHERE user_name=$1`, userName)
 	if err != nil {
 		return UserToken{}, fmt.Errorf("failed to query: %w", err)
 	}
@@ -50,7 +50,7 @@ func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, e
 }
 
 func (p *Postgres) UpdateUserToken(ctx context.Context, userName string, userToken UserToken) error {
-	if _, err := p.conn.Exec(ctx, `
+	if _, err := p.dbPool.Exec(ctx, `
 INSERT INTO user_tokens(user_name, user_key, token) VALUES ($1, $2, $3) ON CONFLICT (user_name)
 	DO UPDATE SET user_key=excluded.user_key, token=excluded.token`,
 		userName, userToken.UserKey, userToken.Token); err != nil {
