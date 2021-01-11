@@ -16,7 +16,7 @@ clean:
 .PHONY: build
 build:
 	@echo build
-	@go build -o $(GOBIN)/stock-service
+	@go build -o $(GOBIN)/final-surge-bot
 
 .PHONY: test
 test:
