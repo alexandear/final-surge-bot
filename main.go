@@ -13,6 +13,10 @@ import (
 
 const (
 	fsClientTimeout = 2 * time.Second
+
+	serverReadTimeout  = 2 * time.Second
+	serverWriteTimeout = 4 * time.Second
+	serverIdleTimeout  = 120 * time.Second
 )
 
 func main() {
@@ -54,7 +58,7 @@ func run() error {
 		return fmt.Errorf("failed to init bot api: %w", err)
 	}
 
-	go listen(config.Debug, ":"+config.Port)
+	go serve(config.Debug, ":"+config.Port)
 
 	fs := &FinalSurgeAPI{
 		client: &http.Client{
@@ -131,16 +135,24 @@ func updatesLocal(bot *tgbotapi.BotAPI) (updates tgbotapi.UpdatesChannel, err er
 	return updates, nil
 }
 
-func listen(debug bool, addr string) {
+func serve(debug bool, addr string) {
 	if debug {
 		log.Printf("start listening on %s", addr)
 	}
 
-	http.DefaultServeMux.Handle("/", http.FileServer(http.Dir("./web")))
-	http.DefaultServeMux.Handle("/check", checkHandler(debug))
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir("./web")))
+	mux.Handle("/check", checkHandler(debug))
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Println(fmt.Errorf("failed to listen and serve: %w", err))
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      mux,
+		ReadTimeout:  serverReadTimeout,
+		WriteTimeout: serverWriteTimeout,
+		IdleTimeout:  serverIdleTimeout,
+	}
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatalf("failed to start listen and serve: %v", err)
 	}
 }
 
