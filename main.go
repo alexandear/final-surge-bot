@@ -26,7 +26,7 @@ func main() {
 }
 
 func run() error {
-	config, err := InitConfig()
+	config, err := NewConfig()
 	if err != nil {
 		return fmt.Errorf("failed to init config: %w", err)
 	}
@@ -79,13 +79,13 @@ func run() error {
 	return nil
 }
 
-func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, error) {
+func updates(bot *tgbotapi.BotAPI, config *Config) (tgbotapi.UpdatesChannel, error) {
 	if config.Debug {
 		log.Printf("bot authorized on account %s", bot.Self.UserName)
 	}
 
 	if config.RunOnHeroku {
-		updates, err := updatesHeroku(bot, config)
+		updates, err := updatesHeroku(bot, config.PublicURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get updates on heroku: %w", err)
 		}
@@ -101,8 +101,8 @@ func updates(bot *tgbotapi.BotAPI, config Config) (tgbotapi.UpdatesChannel, erro
 	return updates, nil
 }
 
-func updatesHeroku(bot *tgbotapi.BotAPI, config Config) (updates tgbotapi.UpdatesChannel, err error) {
-	webhookURL := config.PublicURL + bot.Token
+func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.UpdatesChannel, err error) {
+	webhookURL := publicURL + bot.Token
 	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
 		return nil, fmt.Errorf("failed to set webhook to %s: %w", webhookURL, err)
 	}

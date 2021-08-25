@@ -1,59 +1,25 @@
 package main
 
 import (
-	"errors"
-	"os"
-	"strings"
+	"fmt"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Debug bool
-
-	PublicURL   string
-	BotAPIKey   string
-	Port        string
-	DatabaseURL string
-	RunOnHeroku bool
+	Debug       bool   `envconfig:"DEBUG"`
+	PublicURL   string `envconfig:"PUBLIC_URL" required:"true"`
+	BotAPIKey   string `envconfig:"BOT_API_KEY" required:"true"`
+	Port        string `envconfig:"PORT" required:"true"`
+	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
+	RunOnHeroku bool   `envconfig:"RUN_ON_HEROKU"`
 }
 
-func InitConfig() (Config, error) {
-	var debug bool
-	if v := os.Getenv("DEBUG"); strings.EqualFold(v, "true") || v == "1" {
-		debug = true
+func NewConfig() (*Config, error) {
+	c := &Config{}
+	if err := envconfig.Process("", c); err != nil {
+		return nil, fmt.Errorf("failed to process config: %w", err)
 	}
 
-	publicURL := os.Getenv("PUBLIC_URL")
-	if publicURL == "" {
-		return Config{}, errors.New("PUBLIC_URL env is missing")
-	}
-
-	apiKey := os.Getenv("BOT_API_KEY")
-	if apiKey == "" {
-		return Config{}, errors.New("BOT_API_KEY env is missing")
-	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		return Config{}, errors.New("PORT env is missing")
-	}
-
-	var runOnHeroku bool
-	if v := os.Getenv("RUN_ON_HEROKU"); strings.EqualFold(v, "true") || v == "1" {
-		runOnHeroku = true
-	}
-
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return Config{}, errors.New("DATABASE_URL is missing")
-	}
-
-	return Config{
-		Debug: debug,
-
-		PublicURL:   publicURL,
-		BotAPIKey:   apiKey,
-		Port:        port,
-		DatabaseURL: databaseURL,
-		RunOnHeroku: runOnHeroku,
-	}, nil
+	return c, nil
 }
