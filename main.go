@@ -58,7 +58,14 @@ func run() error {
 		return fmt.Errorf("failed to init bot api: %w", err)
 	}
 
-	go serve(config.Debug, ":"+config.Port)
+	go func() {
+		var host string
+		if config.Debug {
+			host = "localhost"
+		}
+		addr := fmt.Sprintf("%s:%d", host, config.Port)
+		serve(config.Debug, addr)
+	}()
 
 	fs := &FinalSurgeAPI{
 		client: &http.Client{

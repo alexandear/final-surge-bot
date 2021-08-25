@@ -10,7 +10,7 @@ type Config struct {
 	Debug       bool   `envconfig:"DEBUG"`
 	PublicURL   string `envconfig:"PUBLIC_URL" required:"true"`
 	BotAPIKey   string `envconfig:"BOT_API_KEY" required:"true"`
-	Port        string `envconfig:"PORT" required:"true"`
+	Port        int    `envconfig:"PORT" required:"true"`
 	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
 	RunOnHeroku bool   `envconfig:"RUN_ON_HEROKU"`
 }
