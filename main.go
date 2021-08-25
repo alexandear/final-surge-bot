@@ -63,6 +63,7 @@ func run() error {
 		if config.Debug {
 			host = "localhost"
 		}
+
 		addr := fmt.Sprintf("%s:%d", host, config.Port)
 		serve(config.Debug, addr)
 	}()

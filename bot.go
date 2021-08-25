@@ -216,6 +216,7 @@ func messageTask(workouts []Workout, today, tomorrow time.Time) string {
 func (b *Bot) newChooseOptionMsg(chatID int64) *tgbotapi.MessageConfig {
 	msg := tgbotapi.NewMessage(chatID, "Choose option:")
 	msg.ReplyMarkup = b.keyboard
+
 	return &msg
 }
 

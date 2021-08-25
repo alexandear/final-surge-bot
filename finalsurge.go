@@ -166,7 +166,9 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse api data url: %w", err)
 	}
+
 	u.Path = path.Join(u.Path, apiPath)
+
 	if query != nil {
 		u.RawQuery = query.Encode()
 	}
