@@ -115,7 +115,7 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 
 	email, ok := b.userEmails[userName]
 	if !ok {
-		return nil, nil
+		return b.newChooseOptionMsg(chatID), nil
 	}
 
 	switch {
@@ -137,10 +137,7 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 
 		b.userEmails[userName] = ""
 
-		msg := tgbotapi.NewMessage(chatID, "Choose option:")
-		msg.ReplyMarkup = b.keyboard
-
-		return &msg, nil
+		return b.newChooseOptionMsg(chatID), nil
 	}
 
 	return nil, nil
@@ -214,6 +211,12 @@ func messageTask(workouts []Workout, today, tomorrow time.Time) string {
 	writeDescriptions("Tomorrow", tomorrow, tomorrowDescriptions)
 
 	return task.String()
+}
+
+func (b *Bot) newChooseOptionMsg(chatID int64) *tgbotapi.MessageConfig {
+	msg := tgbotapi.NewMessage(chatID, "Choose option:")
+	msg.ReplyMarkup = b.keyboard
+	return &msg
 }
 
 func NewDate(t time.Time) time.Time {
