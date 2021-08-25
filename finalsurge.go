@@ -9,12 +9,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 )
 
 const (
-	finalSurgeAPIData = "https://beta.finalsurge.com/api/Data"
+	finalSurgeAPI = "https://beta.finalsurge.com/api"
 
 	activityTypeNameRestDay = "Rest Day"
 )
@@ -23,9 +24,12 @@ type FinalSurgeAPI struct {
 	client *http.Client
 }
 
-type FinalSurgeCred struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type FinalSurgeLoginReq struct {
+	Email                 string `json:"email"`
+	Password              string `json:"password"`
+	DeviceManufacturer    string `json:"deviceManufacturer"`
+	DeviceModel           string `json:"deviceModel"`
+	DeviceOperatingSystem string `json:"deviceOperatingSystem"`
 }
 
 type FinalSurgeLogin struct {
@@ -65,18 +69,22 @@ type FinalSurgeStatus struct {
 }
 
 func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (UserToken, error) {
-	q := make(url.Values)
-	q.Add("request", "login")
-
-	bc, err := json.Marshal(&FinalSurgeCred{
-		Email:    email,
-		Password: password,
+	bc, err := json.Marshal(&FinalSurgeLoginReq{
+		Email:                 email,
+		Password:              password,
+		DeviceManufacturer:    "",
+		DeviceModel:           "Netscape",
+		DeviceOperatingSystem: "MacIntel",
 	})
 	if err != nil {
 		return UserToken{}, fmt.Errorf("failed to marshal cred: %w", err)
 	}
 
-	bs, err := f.responseBytes(ctx, http.MethodPost, q, nil, bc)
+	h := http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+
+	bs, err := f.responseBytes(ctx, http.MethodPost, nil, "login", h, bc)
 	if err != nil {
 		return UserToken{}, fmt.Errorf("failed to get response bytes: %w", err)
 	}
@@ -99,7 +107,6 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (User
 func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, startDate, endDate time.Time,
 ) ([]Workout, error) {
 	q := make(url.Values)
-	q.Add("request", "WorkoutList")
 	q.Add("scope", "USER")
 	q.Add("scopekey", userToken.UserKey)
 	q.Add("startdate", finalSurgeDate(startDate))
@@ -108,7 +115,7 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, start
 	header := http.Header{}
 	header.Add("Authorization", "Bearer "+userToken.Token)
 
-	bs, err := f.responseBytes(ctx, http.MethodGet, q, header, nil)
+	bs, err := f.responseBytes(ctx, http.MethodGet, q, "WorkoutList", header, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get response bytes: %w", err)
 	}
@@ -153,14 +160,16 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, start
 	return workouts, nil
 }
 
-func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, header http.Header,
-	body []byte) ([]byte, error) {
-	u, err := url.Parse(finalSurgeAPIData)
+func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query url.Values, apiPath string,
+	header http.Header, body []byte) ([]byte, error) {
+	u, err := url.Parse(finalSurgeAPI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse api data url: %w", err)
 	}
-
-	u.RawQuery = query.Encode()
+	u.Path = path.Join(u.Path, apiPath)
+	if query != nil {
+		u.RawQuery = query.Encode()
+	}
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
 	if err != nil {
