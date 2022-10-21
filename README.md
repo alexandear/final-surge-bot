@@ -2,7 +2,11 @@
 
 Telegram bot to communicate with Final Surge platform.
 
-<img src="web\static\final_surge_bot.jpg" width="700" alt="Telegram Bot Screenshot">
+<img src="web/static/final_surge_bot.jpg" width="700" alt="Telegram Bot Screenshot">
+
+## Live
+
+[Render](https://final-surge-bot.onrender.com/)
 
 ## Development
 
