@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/golang/mock/gomock"
 )
 
@@ -29,7 +29,7 @@ func TestBot_ProcessUpdate(t *testing.T) {
 			Message: &tgbotapi.Message{
 				Chat:     &tgbotapi.Chat{ID: chatID},
 				From:     &tgbotapi.User{UserName: userName},
-				Entities: &[]tgbotapi.MessageEntity{{Type: "bot_command", Offset: 0, Length: len(startCommand)}},
+				Entities: []tgbotapi.MessageEntity{{Type: "bot_command", Offset: 0, Length: len(startCommand)}},
 				Text:     startCommand,
 			},
 		}); err != nil {

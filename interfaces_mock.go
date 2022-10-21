@@ -6,7 +6,7 @@ package main
 
 import (
 	context "context"
-	telegram_bot_api "github.com/go-telegram-bot-api/telegram-bot-api"
+	telegram_bot_api "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 	time "time"

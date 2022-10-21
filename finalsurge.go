@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -185,7 +185,7 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
 
-	bs, err := ioutil.ReadAll(resp.Body)
+	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read all from response body: %w", err)
 	}

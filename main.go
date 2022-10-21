@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/jackc/pgx/v4/pgxpool"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -31,7 +33,7 @@ func run() error {
 		return fmt.Errorf("failed to init config: %w", err)
 	}
 
-	dbPool, err := pgxpool.Connect(context.Background(), config.DatabaseURL)
+	dbPool, err := pgxpool.New(context.Background(), config.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("unable to connect to database %s: %w", config.DatabaseURL, err)
 	}
@@ -64,7 +66,7 @@ func run() error {
 			host = "localhost"
 		}
 
-		addr := fmt.Sprintf("%s:%d", host, config.Port)
+		addr := net.JoinHostPort(host, strconv.Itoa(config.Port))
 		serve(config.Debug, addr)
 	}()
 
@@ -93,26 +95,26 @@ func updates(bot *tgbotapi.BotAPI, config *Config) (tgbotapi.UpdatesChannel, err
 	}
 
 	if config.RunOnHeroku {
-		updates, err := updatesHeroku(bot, config.PublicURL)
+		updatesCh, err := updatesHeroku(bot, config.PublicURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get updates on heroku: %w", err)
 		}
 
-		return updates, nil
+		return updatesCh, nil
 	}
 
-	updates, err := updatesLocal(bot)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get updates local: %w", err)
-	}
-
-	return updates, nil
+	return updatesLocal(bot), nil
 }
 
-func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.UpdatesChannel, err error) {
+func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (tgbotapi.UpdatesChannel, error) {
 	webhookURL := publicURL + bot.Token
-	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
-		return nil, fmt.Errorf("failed to set webhook to %s: %w", webhookURL, err)
+	webhook, err := tgbotapi.NewWebhook(webhookURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create webhook to %s: %w", webhookURL, err)
+	}
+
+	if _, err = bot.Request(webhook); err != nil {
+		return nil, fmt.Errorf("failed to request webhook: %w", err)
 	}
 
 	info, err := bot.GetWebhookInfo()
@@ -121,26 +123,19 @@ func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.Upd
 	}
 
 	if info.LastErrorDate != 0 {
-		log.Printf("telegram callback failed: %s", info.LastErrorMessage)
+		return nil, fmt.Errorf("telegram callback failed: %s", info.LastErrorMessage)
 	}
 
-	updates = bot.ListenForWebhook("/" + bot.Token)
-
-	return updates, nil
+	return bot.ListenForWebhook("/" + bot.Token), nil
 }
 
-func updatesLocal(bot *tgbotapi.BotAPI) (updates tgbotapi.UpdatesChannel, err error) {
+func updatesLocal(bot *tgbotapi.BotAPI) tgbotapi.UpdatesChannel {
 	const updateTimeout = 60 * time.Second
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = int(updateTimeout.Seconds())
 
-	updates, err = bot.GetUpdatesChan(u)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get updates chan: %w", err)
-	}
-
-	return updates, nil
+	return bot.GetUpdatesChan(u)
 }
 
 func serve(debug bool, addr string) {
