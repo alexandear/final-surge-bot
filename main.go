@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -64,7 +66,7 @@ func run() error {
 			host = "localhost"
 		}
 
-		addr := fmt.Sprintf("%s:%d", host, config.Port)
+		addr := net.JoinHostPort(host, strconv.Itoa(config.Port))
 		serve(config.Debug, addr)
 	}()
 
