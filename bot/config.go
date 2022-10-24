@@ -18,7 +18,7 @@ type Config struct {
 func NewConfig() (*Config, error) {
 	c := &Config{}
 	if err := envconfig.Process("", c); err != nil {
-		return nil, fmt.Errorf("failed to process config: %w", err)
+		return nil, fmt.Errorf("process config: %w", err)
 	}
 
 	return c, nil

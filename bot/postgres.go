@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
     user_key char(40) not null,
     token char(40) not null
 );`); err != nil {
-		return fmt.Errorf("failed to create table user_tokens")
+		return fmt.Errorf("create table user_tokens")
 	}
 
 	return nil
@@ -33,7 +33,7 @@ func (p *Postgres) UserToken(ctx context.Context, userName string) (UserToken, e
 
 	rows, err := p.dbPool.Query(ctx, `SELECT user_key, token FROM user_tokens WHERE user_name=$1`, userName)
 	if err != nil {
-		return UserToken{}, fmt.Errorf("failed to query: %w", err)
+		return UserToken{}, fmt.Errorf("query: %w", err)
 	}
 
 	for rows.Next() {
@@ -58,7 +58,7 @@ func (p *Postgres) UpdateUserToken(ctx context.Context, userName string, userTok
 INSERT INTO user_tokens(user_name, user_key, token) VALUES ($1, $2, $3) ON CONFLICT (user_name)
 	DO UPDATE SET user_key=excluded.user_key, token=excluded.token`,
 		userName, userToken.UserKey, userToken.Token); err != nil {
-		return fmt.Errorf("failed to update: %w", err)
+		return fmt.Errorf("update: %w", err)
 	}
 
 	return nil

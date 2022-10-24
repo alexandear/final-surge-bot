@@ -82,7 +82,7 @@ func (b *Bot) ProcessUpdate(ctx context.Context, update tgbotapi.Update) error {
 
 	msg, err := b.message(ctx, update.Message)
 	if err != nil {
-		return fmt.Errorf("failed to get message: %w", err)
+		return fmt.Errorf("get message: %w", err)
 	}
 
 	if msg == nil {
@@ -90,7 +90,7 @@ func (b *Bot) ProcessUpdate(ctx context.Context, update tgbotapi.Update) error {
 	}
 
 	if _, err := b.bot.Send(*msg); err != nil {
-		return fmt.Errorf("failed to send reply msg to chat %d: %w", msg.ChatID, err)
+		return fmt.Errorf("send reply msg to chat %d: %w", msg.ChatID, err)
 	}
 
 	return nil
@@ -132,11 +132,11 @@ func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi
 	case email != "":
 		userToken, err := b.fs.Login(ctx, email, text)
 		if err != nil {
-			return nil, fmt.Errorf("failed to login: %w", err)
+			return nil, fmt.Errorf("login: %w", err)
 		}
 
 		if err := b.db.UpdateUserToken(ctx, userName, userToken); err != nil {
-			return nil, fmt.Errorf("failed to update user token: %w", err)
+			return nil, fmt.Errorf("update user token: %w", err)
 		}
 
 		b.userEmails[userName] = ""
@@ -156,7 +156,7 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*t
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get usertoken: %w", err)
+		return nil, fmt.Errorf("get usertoken: %w", err)
 	}
 
 	today := NewDate(b.clock.Now())
@@ -164,7 +164,7 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*t
 
 	workouts, err := b.fs.Workouts(context.Background(), userToken, today, tomorrow)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workouts: %w", err)
+		return nil, fmt.Errorf("get workouts: %w", err)
 	}
 
 	task := MessageTask(workouts, today, tomorrow)

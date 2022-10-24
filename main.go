@@ -31,7 +31,7 @@ func main() {
 func run() error {
 	config, err := bot.NewConfig()
 	if err != nil {
-		return fmt.Errorf("failed to init config: %w", err)
+		return fmt.Errorf("init config: %w", err)
 	}
 
 	dbPool, err := pgxpool.Connect(context.Background(), config.DatabaseURL)
@@ -44,19 +44,19 @@ func run() error {
 	pg := bot.NewPostgres(dbPool)
 
 	if errInit := pg.Init(context.Background()); errInit != nil {
-		return fmt.Errorf("failed to init postgres: %w", errInit)
+		return fmt.Errorf("init postgres: %w", errInit)
 	}
 
 	tgbot, err := tgbotapi.NewBotAPI(config.BotAPIKey)
 	if err != nil {
-		return fmt.Errorf("failed to init bot api: %w", err)
+		return fmt.Errorf("init bot api: %w", err)
 	}
 
 	tgbot.Debug = config.Debug
 
 	updates, err := updates(tgbot, config)
 	if err != nil {
-		return fmt.Errorf("failed to init bot api: %w", err)
+		return fmt.Errorf("init bot api: %w", err)
 	}
 
 	go func() {
@@ -79,7 +79,7 @@ func run() error {
 
 	for update := range updates {
 		if err := b.ProcessUpdate(context.Background(), update); err != nil {
-			log.Printf("failed to process update: %v", err)
+			log.Printf("process update: %v", err)
 		}
 	}
 
@@ -94,7 +94,7 @@ func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel,
 	if config.RunOnHeroku {
 		updates, err := updatesHeroku(bot, config.PublicURL)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get updates on heroku: %w", err)
+			return nil, fmt.Errorf("get updates on heroku: %w", err)
 		}
 
 		return updates, nil
@@ -102,7 +102,7 @@ func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel,
 
 	updates, err := updatesLocal(bot)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get updates local: %w", err)
+		return nil, fmt.Errorf("get updates local: %w", err)
 	}
 
 	return updates, nil
@@ -111,12 +111,12 @@ func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel,
 func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.UpdatesChannel, err error) {
 	webhookURL := publicURL + bot.Token
 	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
-		return nil, fmt.Errorf("failed to set webhook to %s: %w", webhookURL, err)
+		return nil, fmt.Errorf("set webhook to %s: %w", webhookURL, err)
 	}
 
 	info, err := bot.GetWebhookInfo()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get webhook info: %w", err)
+		return nil, fmt.Errorf("get webhook info: %w", err)
 	}
 
 	if info.LastErrorDate != 0 {
@@ -136,7 +136,7 @@ func updatesLocal(bot *tgbotapi.BotAPI) (updates tgbotapi.UpdatesChannel, err er
 
 	updates, err = bot.GetUpdatesChan(u)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get updates chan: %w", err)
+		return nil, fmt.Errorf("get updates chan: %w", err)
 	}
 
 	return updates, nil
@@ -159,7 +159,7 @@ func serve(debug bool, addr string) {
 		IdleTimeout:  serverIdleTimeout,
 	}
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("failed to start listen and serve: %v", err)
+		log.Fatalf("start listen and serve: %v", err)
 	}
 }
 

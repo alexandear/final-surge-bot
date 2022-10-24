@@ -81,7 +81,7 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (User
 		DeviceOperatingSystem: "MacIntel",
 	})
 	if err != nil {
-		return UserToken{}, fmt.Errorf("failed to marshal cred: %w", err)
+		return UserToken{}, fmt.Errorf("marshal cred: %w", err)
 	}
 
 	h := http.Header{
@@ -90,16 +90,16 @@ func (f *FinalSurgeAPI) Login(ctx context.Context, email, password string) (User
 
 	bs, err := f.responseBytes(ctx, http.MethodPost, nil, "login", h, bc)
 	if err != nil {
-		return UserToken{}, fmt.Errorf("failed to get response bytes: %w", err)
+		return UserToken{}, fmt.Errorf("get response bytes: %w", err)
 	}
 
 	var login FinalSurgeLogin
 	if err := json.Unmarshal(bs, &login); err != nil {
-		return UserToken{}, fmt.Errorf("failed to unmarshal login: %w", err)
+		return UserToken{}, fmt.Errorf("unmarshal login: %w", err)
 	}
 
 	if err := newFinalSurgeError(login.FinalSurgeStatus); err != nil {
-		return UserToken{}, fmt.Errorf("failed to get login: %w", err)
+		return UserToken{}, fmt.Errorf("get login: %w", err)
 	}
 
 	return UserToken{
@@ -121,16 +121,16 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, start
 
 	bs, err := f.responseBytes(ctx, http.MethodGet, q, "WorkoutList", header, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get response bytes: %w", err)
+		return nil, fmt.Errorf("get response bytes: %w", err)
 	}
 
 	var workoutList FinalSurgeWorkoutList
 	if err := json.Unmarshal(bs, &workoutList); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal: %w", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
 	if err := newFinalSurgeError(workoutList.FinalSurgeStatus); err != nil {
-		return nil, fmt.Errorf("failed to get workouts: %w", err)
+		return nil, fmt.Errorf("get workouts: %w", err)
 	}
 
 	desc := func(data FinalSurgeWorkoutData) string {
@@ -150,7 +150,7 @@ func (f *FinalSurgeAPI) Workouts(ctx context.Context, userToken UserToken, start
 	for _, w := range workoutList.Data {
 		date, err := time.Parse("2006-01-02T15:04:05", w.WorkoutDate)
 		if err != nil {
-			log.Printf("failed to parse workout date %s : %v", w.WorkoutDate, err)
+			log.Printf("parse workout date %s : %v", w.WorkoutDate, err)
 
 			continue
 		}
@@ -168,7 +168,7 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 	header http.Header, body []byte) ([]byte, error) {
 	u, err := url.Parse(finalSurgeAPI)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse api data url: %w", err)
+		return nil, fmt.Errorf("parse api data url: %w", err)
 	}
 
 	u.Path = path.Join(u.Path, apiPath)
@@ -179,23 +179,23 @@ func (f *FinalSurgeAPI) responseBytes(ctx context.Context, method string, query 
 
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 
 	req.Header = header
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to do request: %w", err)
+		return nil, fmt.Errorf("do request: %w", err)
 	}
 
 	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read all from response body: %w", err)
+		return nil, fmt.Errorf("read all from response body: %w", err)
 	}
 
 	if err := resp.Body.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close body: %w", err)
+		return nil, fmt.Errorf("close body: %w", err)
 	}
 
 	return bs, nil
