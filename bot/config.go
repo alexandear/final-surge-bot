@@ -12,7 +12,7 @@ type Config struct {
 	BotAPIKey   string `envconfig:"BOT_API_KEY" required:"true"`
 	Port        int    `envconfig:"PORT" required:"true"`
 	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
-	RunOnHeroku bool   `envconfig:"RUN_ON_HEROKU"`
+	RunOnCloud  bool   `envconfig:"RUN_ON_CLOUD"`
 }
 
 func NewConfig() (*Config, error) {

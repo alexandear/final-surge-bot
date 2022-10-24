@@ -91,10 +91,10 @@ func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel,
 		log.Printf("bot authorized on account %s", bot.Self.UserName)
 	}
 
-	if config.RunOnHeroku {
-		updates, err := updatesHeroku(bot, config.PublicURL)
+	if config.RunOnCloud {
+		updates, err := updatesCloud(bot, config.PublicURL)
 		if err != nil {
-			return nil, fmt.Errorf("get updates on heroku: %w", err)
+			return nil, fmt.Errorf("get updates on cloud: %w", err)
 		}
 
 		return updates, nil
@@ -108,7 +108,7 @@ func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel,
 	return updates, nil
 }
 
-func updatesHeroku(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.UpdatesChannel, err error) {
+func updatesCloud(bot *tgbotapi.BotAPI, publicURL string) (updates tgbotapi.UpdatesChannel, err error) {
 	webhookURL := publicURL + bot.Token
 	if _, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL)); err != nil {
 		return nil, fmt.Errorf("set webhook to %s: %w", webhookURL, err)
