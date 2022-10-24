@@ -6,6 +6,7 @@ package main
 
 import (
 	context "context"
+	final_surge_bot "github.com/alexandear/final-surge-bot"
 	telegram_bot_api "github.com/go-telegram-bot-api/telegram-bot-api"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -74,10 +75,10 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // UserToken mocks base method
-func (m *MockStorage) UserToken(ctx context.Context, userName string) (UserToken, error) {
+func (m *MockStorage) UserToken(ctx context.Context, userName string) (final_surge_bot.UserToken, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserToken", ctx, userName)
-	ret0, _ := ret[0].(UserToken)
+	ret0, _ := ret[0].(final_surge_bot.UserToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -89,7 +90,7 @@ func (mr *MockStorageMockRecorder) UserToken(ctx, userName interface{}) *gomock.
 }
 
 // UpdateUserToken mocks base method
-func (m *MockStorage) UpdateUserToken(ctx context.Context, userName string, userToken UserToken) error {
+func (m *MockStorage) UpdateUserToken(ctx context.Context, userName string, userToken final_surge_bot.UserToken) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUserToken", ctx, userName, userToken)
 	ret0, _ := ret[0].(error)
@@ -126,10 +127,10 @@ func (m *MockFinalSurge) EXPECT() *MockFinalSurgeMockRecorder {
 }
 
 // Login mocks base method
-func (m *MockFinalSurge) Login(ctx context.Context, email, password string) (UserToken, error) {
+func (m *MockFinalSurge) Login(ctx context.Context, email, password string) (final_surge_bot.UserToken, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Login", ctx, email, password)
-	ret0, _ := ret[0].(UserToken)
+	ret0, _ := ret[0].(final_surge_bot.UserToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -141,10 +142,10 @@ func (mr *MockFinalSurgeMockRecorder) Login(ctx, email, password interface{}) *g
 }
 
 // Workouts mocks base method
-func (m *MockFinalSurge) Workouts(ctx context.Context, userToken UserToken, startDate, endDate time.Time) ([]Workout, error) {
+func (m *MockFinalSurge) Workouts(ctx context.Context, userToken final_surge_bot.UserToken, startDate, endDate time.Time) ([]final_surge_bot.Workout, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Workouts", ctx, userToken, startDate, endDate)
-	ret0, _ := ret[0].([]Workout)
+	ret0, _ := ret[0].([]final_surge_bot.Workout)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

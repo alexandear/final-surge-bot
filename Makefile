@@ -24,9 +24,8 @@ test:
 	@go test -count=1 -race -v ./...
 
 .PHONY: lint
-lint:
+lint: ensure-golangci-lint
 	@echo lint
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint
 	@$(GOBIN)/golangci-lint run
 
 .PHONY: format
@@ -35,7 +34,14 @@ format:
 	@go fmt $(PKGS)
 
 .PHONY: generate
-generate:
+generate: ensure-mockgen
 	@echo generate
-	@go install github.com/golang/mock/mockgen
 	@go generate ./...
+
+.PHONY: ensure-golangci-lint
+ensure-golangci-lint:
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.33.0
+
+.PHONY: ensure-mockgen
+ensure-mockgen:
+	@go install github.com/golang/mock/mockgen@v1.3.1
