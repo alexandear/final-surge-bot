@@ -1,10 +1,12 @@
-package main
+package bot_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	. "github.com/alexandear/final-surge-bot/bot"
+	"github.com/alexandear/final-surge-bot/bot/mock"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/golang/mock/gomock"
 )
@@ -13,9 +15,9 @@ func TestBot_ProcessUpdate(t *testing.T) {
 	t.Run("start", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		senderMock := NewMockSender(ctrl)
-		fsMock := NewMockFinalSurge(ctrl)
-		storageMock := NewMockStorage(ctrl)
+		senderMock := mock.NewMockSender(ctrl)
+		fsMock := mock.NewMockFinalSurge(ctrl)
+		storageMock := mock.NewMockStorage(ctrl)
 		bot := NewBot(senderMock, storageMock, fsMock, nil)
 		const userName = "alexandear"
 		const chatID = int64(20)
@@ -61,7 +63,7 @@ func TestBot_ProcessUpdate(t *testing.T) {
 		senderMock.EXPECT().Send(tgbotapi.MessageConfig{
 			BaseChat: tgbotapi.BaseChat{
 				ChatID:      chatID,
-				ReplyMarkup: bot.keyboard,
+				ReplyMarkup: bot.Keyboard(),
 			},
 			Text: "Choose option:",
 		}).Times(1)
@@ -79,9 +81,9 @@ func TestBot_ProcessUpdate(t *testing.T) {
 	t.Run("token not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		senderMock := NewMockSender(ctrl)
-		fsMock := NewMockFinalSurge(ctrl)
-		storageMock := NewMockStorage(ctrl)
+		senderMock := mock.NewMockSender(ctrl)
+		fsMock := mock.NewMockFinalSurge(ctrl)
+		storageMock := mock.NewMockStorage(ctrl)
 		bot := NewBot(senderMock, storageMock, fsMock, nil)
 		const userName = "alexandear"
 		const chatID = int64(20)
@@ -107,10 +109,10 @@ func TestBot_ProcessUpdate(t *testing.T) {
 	t.Run("button task", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		senderMock := NewMockSender(ctrl)
-		fsMock := NewMockFinalSurge(ctrl)
-		storageMock := NewMockStorage(ctrl)
-		clockMock := NewMockClock(ctrl)
+		senderMock := mock.NewMockSender(ctrl)
+		fsMock := mock.NewMockFinalSurge(ctrl)
+		storageMock := mock.NewMockStorage(ctrl)
+		clockMock := mock.NewMockClock(ctrl)
 		bot := NewBot(senderMock, storageMock, fsMock, clockMock)
 		const userName = "alexandear"
 		const chatID = int64(20)
@@ -153,7 +155,7 @@ not set
 	})
 }
 
-func TestBot_messageTask(t *testing.T) {
+func TestBot_MessageTask(t *testing.T) {
 	today := time.Date(2020, time.December, 23, 0, 0, 0, 0, time.UTC)
 	tomorrow := time.Date(2020, time.December, 24, 0, 0, 0, 0, time.UTC)
 	for name, tc := range map[string]struct {
@@ -231,7 +233,7 @@ not set
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			actual := messageTask(tc.data, today, tomorrow)
+			actual := MessageTask(tc.data, today, tomorrow)
 
 			if actual != tc.expected {
 				t.Errorf("actual=%s, expected=%s", actual, tc.expected)

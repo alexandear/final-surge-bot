@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"bytes"
@@ -22,6 +22,10 @@ const (
 
 type FinalSurgeAPI struct {
 	client *http.Client
+}
+
+func NewFinalSurgeAPI(client *http.Client) *FinalSurgeAPI {
+	return &FinalSurgeAPI{client: client}
 }
 
 type FinalSurgeLoginReq struct {

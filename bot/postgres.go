@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"context"
@@ -9,6 +9,10 @@ import (
 
 type Postgres struct {
 	dbPool *pgxpool.Pool
+}
+
+func NewPostgres(pool *pgxpool.Pool) *Postgres {
+	return &Postgres{dbPool: pool}
 }
 
 func (p *Postgres) Init(ctx context.Context) error {

@@ -40,7 +40,7 @@ generate: ensure-mockgen
 
 .PHONY: ensure-golangci-lint
 ensure-golangci-lint:
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.33.0
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 
 .PHONY: ensure-mockgen
 ensure-mockgen:

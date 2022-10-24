@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"context"
@@ -48,7 +48,7 @@ type Clock interface {
 	Now() time.Time
 }
 
-//go:generate mockgen -source=$GOFILE -package main -destination interfaces_mock.go
+//go:generate mockgen -source=$GOFILE -package mock -destination mock/interfaces_mock.go
 type Bot struct {
 	bot   Sender
 	db    Storage
@@ -94,6 +94,10 @@ func (b *Bot) ProcessUpdate(ctx context.Context, update tgbotapi.Update) error {
 	}
 
 	return nil
+}
+
+func (b *Bot) Keyboard() tgbotapi.ReplyKeyboardMarkup {
+	return b.keyboard
 }
 
 func (b *Bot) message(ctx context.Context, message *tgbotapi.Message) (*tgbotapi.MessageConfig, error) {
@@ -163,14 +167,14 @@ func (b *Bot) buttonTask(ctx context.Context, userName string, chatID int64) (*t
 		return nil, fmt.Errorf("failed to get workouts: %w", err)
 	}
 
-	task := messageTask(workouts, today, tomorrow)
+	task := MessageTask(workouts, today, tomorrow)
 
 	msg := tgbotapi.NewMessage(chatID, task)
 
 	return &msg, nil
 }
 
-func messageTask(workouts []Workout, today, tomorrow time.Time) string {
+func MessageTask(workouts []Workout, today, tomorrow time.Time) string {
 	todayDescriptions := make([]string, 0, len(workouts))
 	tomorrowDescriptions := make([]string, 0, len(workouts))
 

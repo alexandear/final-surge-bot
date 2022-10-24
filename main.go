@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alexandear/final-surge-bot/bot"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -28,7 +29,7 @@ func main() {
 }
 
 func run() error {
-	config, err := NewConfig()
+	config, err := bot.NewConfig()
 	if err != nil {
 		return fmt.Errorf("failed to init config: %w", err)
 	}
@@ -40,22 +41,20 @@ func run() error {
 
 	defer dbPool.Close()
 
-	pg := &Postgres{
-		dbPool: dbPool,
-	}
+	pg := bot.NewPostgres(dbPool)
 
 	if errInit := pg.Init(context.Background()); errInit != nil {
 		return fmt.Errorf("failed to init postgres: %w", errInit)
 	}
 
-	bot, err := tgbotapi.NewBotAPI(config.BotAPIKey)
+	tgbot, err := tgbotapi.NewBotAPI(config.BotAPIKey)
 	if err != nil {
 		return fmt.Errorf("failed to init bot api: %w", err)
 	}
 
-	bot.Debug = config.Debug
+	tgbot.Debug = config.Debug
 
-	updates, err := updates(bot, config)
+	updates, err := updates(tgbot, config)
 	if err != nil {
 		return fmt.Errorf("failed to init bot api: %w", err)
 	}
@@ -70,15 +69,13 @@ func run() error {
 		serve(config.Debug, addr)
 	}()
 
-	fs := &FinalSurgeAPI{
-		client: &http.Client{
-			Timeout: fsClientTimeout,
-		},
-	}
+	fs := bot.NewFinalSurgeAPI(&http.Client{
+		Timeout: fsClientTimeout,
+	})
 
-	clock := &RealClock{}
+	clock := bot.NewClock()
 
-	b := NewBot(bot, pg, fs, clock)
+	b := bot.NewBot(tgbot, pg, fs, clock)
 
 	for update := range updates {
 		if err := b.ProcessUpdate(context.Background(), update); err != nil {
@@ -89,7 +86,7 @@ func run() error {
 	return nil
 }
 
-func updates(bot *tgbotapi.BotAPI, config *Config) (tgbotapi.UpdatesChannel, error) {
+func updates(bot *tgbotapi.BotAPI, config *bot.Config) (tgbotapi.UpdatesChannel, error) {
 	if config.Debug {
 		log.Printf("bot authorized on account %s", bot.Self.UserName)
 	}

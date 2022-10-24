@@ -33,6 +33,15 @@ linters:
   disable:
     - goerr113
     - maligned
+    - varnamelen
+    - tagliatelle
+    - nonamedreturns
+    - nilnil
+    - exhaustruct
+    - contextcheck
+    - gci
+    - gofumpt
+    - exhaustivestruct
 
 issues:
   exclude-rules:
