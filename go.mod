@@ -19,7 +19,7 @@ require (
 	github.com/jackc/pgtype v1.6.2 // indirect
 	github.com/jackc/puddle v1.1.3 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 )
